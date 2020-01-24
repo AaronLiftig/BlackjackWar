@@ -1,6 +1,8 @@
 import pydealer
 import random
 
+cardValues = {"Ace": 11,"King": 10,"Queen": 10,"Jack": 10,"10": 10,"9": 9,
+                "8": 8,"7": 7,"6": 6,"5": 5,"4": 4,"3": 3,"2": 2}
 
 def BlackjackWarGame():
     #TODO While True:
@@ -15,6 +17,7 @@ def BlackjackWarGame():
         dealer = getNextPlayer(playersHandsList,dealer)
 
     #TODO
+
 
 
 def dealCards(deck): # Just splits deck to deal, as cards are already shuffled.
@@ -56,28 +59,28 @@ def printHandSizes(playersHandsList): #TODO may not be necessary
         print(player.name + ': ',player.size)
 
 def pickRandomDealer(playersHandsList):
-    dealer = random.randint(0,len(playersHandsList))
+    dealer = random.randint(0,len(playersHandsList)-1)
+    print('dealer',dealer)
     playersHandsList[dealer].isDealer = True
     print(playersHandsList[dealer].name + ' is the dealer.','\n')
     return dealer
 
 def playRound(playersHandsList,dealer):
-    playCards(playersHandsList,dealer)
-
-    playersHandsList = playCards(playersHandsList)
-
-    for playerIndex in range((dealer+1)%numOfPlayers,(dealer+numOfPlayers)%numOfPlayers):
-        while True:
-            if player.total == 'continue':
-                getHit(playerToPlay)
+    numOfPlayers = len(playersHandsList)
+    playersHandsList = playCards(playersHandsList,dealer,numOfPlayers)
+    for playerIndex in range((dealer+1)%numOfPlayers,(dealer+numOfPlayers+1)%numOfPlayers):
+        player = playersHandsList[playerIndex]
+        while player.result == 'continue':
+            player.result = getChoice(player,currentTotal)
     #TODO
 
     return playersHandsList
 
 
-def playCards(playersHandsList,dealer):
-    numOfPlayers = len(playersHandsList)
-    for playerIndex in range((dealer+1)%numOfPlayers,(dealer+numOfPlayers)%numOfPlayers):
+def playCards(playersHandsList,dealer,numOfPlayers):
+    for playerIndex in range((dealer+1),(dealer+numOfPlayers+1)):
+        playerIndex = playerIndex % numOfPlayers
+        print('pi',playerIndex)
         player = playersHandsList[playerIndex]
         player.inPlay = pydealer.Stack()
         player.inPlay.add(player.deal(2))
@@ -85,28 +88,31 @@ def playCards(playersHandsList,dealer):
         if player.isDealer == False:
             print(player.name + ' is showing...')
             print(player.inPlay)
-            player.total = checkTotal(player)
+            player.result,player.total = checkTotal(player)
         elif player.isDealer == True:
-            print(player.name + ' is showing...')           
+            print(player.name + ', the dealer, is showing...')           
             print(player.inPlay.deal()[0])
-            player.total = checkTotal(player)
-    return playersHandsList
-
-def getSum():
-    # TODO sum cards in stack
-    pass       
+            player.result,player.total = checkTotal(player)
+    return playersHandsList      
 
 def checkTotal(player):
-    handTotal = player.inPlay.getSum()
+    handTotal = getSum(player)
     if handTotal < 21:
         result = checkFor5Cards(player)
-        return result 
+        return result, handTotal
     elif handTotal == 21:
         print(player.name + ' has blackjack!')
-        return 'blackjack'
+        return 'blackjack', handTotal
     elif handTotal > 21:
+        checkForAce()
         print(player.name + ' has ' + handTotal + ' and has busted.')
-        return 'bust'
+        return 'bust', handTotal
+
+def getSum(player,handTotal=0):
+    for card in player.inPlay.cards:
+        handTotal+=cardValues[card.value]
+    print(player.name + ' has a total of',handTotal)
+    return handTotal 
 
 def checkFor5Cards(player):
     if player.size < 5:
@@ -115,22 +121,32 @@ def checkFor5Cards(player):
         print(player.name + ' has 5 cards. Blackjack!')
         return 'blackjack'
 
+def checkForAce():
+    pass
+
+def getDealers2ndCard():
+    pass
+
 def checkForHandWinner():
     pass
 
 def getNextPlayer(playersHandsList,previousPlayer):
     return (previousPlayer+1)%len(playersHandsList)
 
-def getHit(player,currentTotal):
+def getNextDealer(playersHandsList,previousDealer):
+
+def getChoice(player,currentTotal):
     print(player.name + ' is showing ' + str(currentTotal)+'.')
     choice = input('Would ' + player.name + ' like to hit? Enter h for hit or s for stay.')
     if choice.lower() == 'h':
         hit = player.deal(1)
-        #TODO
-        pass
+        print(player.name + ' gets',hit)
+        player.total = player.total += hit
+        print('For a new total of',player.total)
+        checkTotal
+        return 'continue', 
     elif choice.lower() == 's':
-        #TODO
-        pass
+        return 'stay', player.total
 
 def warTiebreak():
     pass
@@ -151,7 +167,7 @@ def deleteEliminated(playersHandsList):
 def checkForGameWinner(playersHandsList):
     if len(playersHandsList) == 1:
         print(playersHandsList[0].name + ' is the winner!','\n')
-        playAgain()
+        return playAgain()
 
 def playAgain():
     playNewGame = input('Would you like to play again? Enter y for yes or n for no.')
