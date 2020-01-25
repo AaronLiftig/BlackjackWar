@@ -19,7 +19,6 @@ def BlackjackWarGame():
     #TODO
 
 
-
 def dealCards(deck): # Just splits deck to deal, as cards are already shuffled.
     numOfPlayers = input('Are you playing with 2 or 4 players? Enter 2 or 4 and press enter.')
     if int(numOfPlayers) == 2:
@@ -76,7 +75,6 @@ def playRound(playersHandsList,dealer):
 
     return playersHandsList
 
-
 def playCards(playersHandsList,dealer,numOfPlayers):
     for playerIndex in range((dealer+1),(dealer+numOfPlayers+1)):
         playerIndex = playerIndex % numOfPlayers
@@ -114,6 +112,19 @@ def getSum(player,handTotal=0):
     print(player.name + ' has a total of',handTotal)
     return handTotal 
 
+def getChoice(player,currentTotal):
+    print(player.name + ' is showing '+str(currentTotal) + '.')
+    choice = input('Would ' + player.name + ' like to hit? Enter h for hit or s for stay.')
+    if choice.lower() == 'h':
+        hit = player.deal(1)
+        print(player.name + ' gets',hit)
+        player.total += hit
+        print('For a new total of',player.total)
+        checkTotal
+        return 'continue', 
+    elif choice.lower() == 's':
+        return 'stay', player.total
+
 def checkFor5Cards(player):
     if player.size < 5:
         return 'continue'
@@ -134,21 +145,12 @@ def getNextPlayer(playersHandsList,previousPlayer):
     return (previousPlayer+1)%len(playersHandsList)
 
 def getNextDealer(playersHandsList,previousDealer):
-
-def getChoice(player,currentTotal):
-    print(player.name + ' is showing ' + str(currentTotal)+'.')
-    choice = input('Would ' + player.name + ' like to hit? Enter h for hit or s for stay.')
-    if choice.lower() == 'h':
-        hit = player.deal(1)
-        print(player.name + ' gets',hit)
-        player.total = player.total += hit
-        print('For a new total of',player.total)
-        checkTotal
-        return 'continue', 
-    elif choice.lower() == 's':
-        return 'stay', player.total
+    pass
 
 def warTiebreak():
+    pass
+
+def divideWinnersCards():
     pass
 
 def checkIfEliminated(player):
