@@ -5,7 +5,6 @@ class BlackjackWarGame:
     def __init__(self):
         self.cardValues = {"Ace": 11,"King": 10,"Queen": 10,"Jack": 10,"10": 10,"9": 9,
                             "8": 8,"7": 7,"6": 6,"5": 5,"4": 4,"3": 3,"2": 2}
-
         self.playGame()
     
     def playGame(self):
@@ -19,7 +18,11 @@ class BlackjackWarGame:
         self.pickRandomDealer()
 
         while True: # Plays one round
-            self.playRound()
+            self.resultsList = []
+            self.blackjackList = []
+            skip = self.playRound()
+            self.checkRoundWinner(skip)
+            
             self.printHandSizes()
             
             self.getNextDealer()
@@ -38,7 +41,6 @@ class BlackjackWarGame:
             for player,nameString in zip(self.playersHandsList,self.playerNamesList):
                 player.name = nameString
                 player.eliminated = False
-                player.isDealer = False
         elif int(self.numOfPlayers) == 4:
             self.Player1 = pydealer.Stack()
             self.Player1.add(self.deck.deal(13))
@@ -53,7 +55,6 @@ class BlackjackWarGame:
             for player,nameString in zip(self.playersHandsList,self.playerNames):
                 player.name = nameString
                 player.eliminated = False
-                player.isDealer = False
         else:
             self.dealCards()
 
@@ -65,24 +66,26 @@ class BlackjackWarGame:
 
     def pickRandomDealer(self):
         self.dealerIndex = random.randint(0,len(self.playersHandsList)-1)
-        self.playersHandsList[self.dealerIndex].isDealer = True
-        print(self.playersHandsList[self.dealerIndex].name + ' is the dealer to start.','\n')
+        self.dealer = self.playersHandsList[self.dealerIndex]
+        print(self.dealer.name + ' is the dealer to start.','\n')
 
     def playRound(self):
         self.numOfPlayers = len(self.playersHandsList)
         self.playCards()
         for playerIndex in range(self.dealerIndex+1,self.dealerIndex+1 + self.numOfPlayers):
+            if (len(self.resultsList)==3) & all(result=='bust' for result in self.resultsList):
+                return True
             playerIndex %= self.numOfPlayers
             player = self.playersHandsList[playerIndex]
-            if player.isDealer == True:
+            if self.dealer.name == player.name:
                 print('It is the dealer\'s turn. The dealer\'s hidden card is a',player.inPlay[1])
-                print(player.name + ' has a total of',player.handTotal,'\n'*2)
+                print('So they have:',player.inPlay,'\n')
+                print(player.name + ' has a total of',player.handTotal)
+                print('\n')
             while player.result == 'continue':
                 self.getChoice(player)
-        
-        self.checkHandWinner()
-        
-        #TODO
+            self.resultsList.append(player.result)
+        return False
 
     def playCards(self):
         for playerIndex in range(self.dealerIndex+1,self.dealerIndex+1 + self.numOfPlayers):
@@ -90,81 +93,100 @@ class BlackjackWarGame:
             player = self.playersHandsList[Index]
             player.inPlay = pydealer.Stack()
             player.inPlay.add(player.deal(2))
-            if player.isDealer == False:
+            if self.dealer.name != player.name:
+                print('##########')
                 print(player.name + ' is showing...')
                 print(player.inPlay,'\n')
                 self.checkTotal(player)
-            elif player.isDealer == True:
+            elif self.dealer.name == player.name:
+                print('##########')
                 print(player.name + ', the dealer, is showing...')           
                 print(player.inPlay[0],'\n')
                 self.checkTotal(player)
                 if player.result == 'continue':
-                    print(player.name + ' has a total of',self.cardValues[player.inPlay[0].value],'\n'*2)    
+                    print(player.name + ' is showing a total of',self.cardValues[player.inPlay[0].value],'\n')    
 
     def checkTotal(self,player):
         self.getSum(player)
         if player.handTotal < 21:
             player.result = self.checkFor5Cards(player)
         elif player.handTotal == 21:
-            print(player.name + ' has blackjack!','\n'*2)
+            print(player.name + ' has blackjack!','\n')
             player.result = 'blackjack'
+            self.blackjackList.append(player)
         elif player.handTotal > 21:
             self.checkForAce()
-            print(player.name + ' has ' + str(player.handTotal) + ' and has busted.','\n'*2)
+            print(player.name + ' has ' + str(player.handTotal) + ' and has busted.','\n')
             player.result = 'bust'
 
-    def getSum(self,player,handTotal=0): # TODO implement sum that adds last hit instead of counting hand each time
+    def getSum(self,player,handTotal=0): # TODO implement sum that adds last hit instead of counting whole hand each time
         for card in player.inPlay.cards:
             handTotal += self.cardValues[card.value]
         player.handTotal = handTotal
-        if player.isDealer == False:
-            print(player.name + ' has a total of',player.handTotal,'\n'*2)
+        if self.dealer.name != player.name:
+            print(player.name + ' has a total of',player.handTotal,'\n')
 
     def checkFor5Cards(self,player):
         if player.inPlay.size < 5:
             return 'continue'
         elif player.inPlay.size == 5:
-            print(player.name + ' has 5 cards. Blackjack!','\n'*2)
+            print(player.name + ' has 5 cards. Blackjack!','\n')
+            self.blackjackList.append(player)
             return 'blackjack'
 
     def getChoice(self,player):
         print('It is ' + player.name +'\'s turn.')
         print(player.name + ' is showing a total of '+ str(player.handTotal) + '.')
-        choice = input('Would ' + player.name + ' like to hit? Enter h for hit or s for stay.')
+        choice = input('Would ' + player.name + ' like to hit? Enter h for hit or s for stay.\n')
         if choice.lower() == 'h':
             hit = player.deal(1)
-            print(player.name + ' gets',hit)
-            player.add(hit)
+            print(player.name + ' gets a(n)',hit)
+            player.inPlay.add(hit)
             self.checkTotal(player)
-            print('For a new total of',player.handTotal)
         elif choice.lower() == 's':
             player.result = 'stay'
 
-
-    def checkForAce(self):
+    def checkForAce(self): # TODO Make ace count as 1 if player has one and busts
         pass
 
-    def getDealers2ndCard(self):
-        pass
+    def checkRoundWinner(self,skip):
+        winnerStack = pydealer.Stack()
+        if skip == False:
+            if len(self.blackjackList)==0:
+                notBustList = []
+                for player in self.playersHandsList:
+                    if player.result != 'bust':
+                        notBustList.append(player)
+            elif len(self.blackjackList)==1:
+                self.takeLoserCards(self.blackjackList[0])
+            else:
+                self.warTiebreak(self.blackjackList)
+        elif skip == True:
+            print('The dealer has won by default.')
+            self.takeLoserCards(self.dealer)
+            return
+        else:
+            print('something went wrong')
+            exit()
 
-    def checkHandWinner(self):
-        pass
+    def takeLoserCards(self,player):
+        for player in self.playersHandsList:
+            winnerStack.add(player.inPlay.empty())
+            winnerStack.shuffle()
+        player.add(winnerStack,end='bottom')
 
-    def getNextPlayer(self):
-        return (previousPlayer+1)%len(self.playersHandsList)
+    def warTiebreak(self):
+        for player in self.tiebreakList:
+            pass
 
     def getNextDealer(self):
         pass
-
-    def warTiebreak(self):
-        pass
-
+    
     def divideWinnersCards(self):
         pass
 
-    def checkIfEliminated(self,player):
+    def checkIfEliminated(self,player): # TODO Determine new dealer after removals
         if player.size == 0:
-            player.eliminated = True
             print(player.name + ' has been eliminated.','\n')
             self.playersHandsList.remove(player)
             self.checkForGameWinner()
