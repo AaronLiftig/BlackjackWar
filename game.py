@@ -3,8 +3,8 @@ import random
 
 class BlackjackWarGame:
     def __init__(self):
-        self.cardValues = {"Ace": 11,"King": 10,"Queen": 10,"Jack": 10,"10": 10,"9": 9,
-                            "8": 8,"7": 7,"6": 6,"5": 5,"4": 4,"3": 3,"2": 2}
+        self.cardValues = {"Ace":11,"King":10,"Queen":10,"Jack":10,"10":10,
+                            "9":9,"8":8,"7":7,"6":6,"5":5,"4":4,"3":3,"2":2}
         self.playGame()
     
     def playGame(self):
@@ -29,7 +29,7 @@ class BlackjackWarGame:
 
         #TODO
 
-    def dealCards(self): # Just splits deck to deal, as cards are already shuffled.
+    def dealCards(self): # Just splits deck to deal, as cards are shuffled. Actual visual can deal one at a time.
         self.numOfPlayers = input('Are you playing with 2 or 4 players? Enter 2 or 4 and press enter.\n')
         if int(self.numOfPlayers) == 2:
             self.Player1 = pydealer.Stack()
@@ -136,6 +136,7 @@ class BlackjackWarGame:
             return 'blackjack'
 
     def getChoice(self,player):
+        print('##########')
         print('It is ' + player.name +'\'s turn.')
         print(player.name + ' is showing a total of '+ str(player.handTotal) + '.')
         choice = input('Would ' + player.name + ' like to hit? Enter h for hit or s for stay.\n')
@@ -151,11 +152,28 @@ class BlackjackWarGame:
         pass
 
     def checkRoundWinner(self,skip):
-        self.winnerStack = pydealer.Stack()
         if skip == False:
             if len(self.blackjackList)==0:
                 notBustList = [player for player in self.playerList if player not in self.bustsList]
-
+                if len(notBustList)==1:
+                    self.takeLoserCards(notBustList[0])
+                else:    
+                    tempList = []
+                    for player in notBustList:
+                        if not tempList:
+                            tempList.append(player)
+                        elif tempList[0].handTotal>player.handTotal:
+                            pass
+                        elif tempList[0].handTotal<player.handTotal:
+                            tempList = []
+                            tempList.append(player)
+                        elif tempList[0].handTotal==player.handTotal:
+                            tempList.append(player)
+                
+                if len(tempList)==1:
+                    self.takeLoserCards(tempList[0])
+                else:
+                    self.warTiebreak(tempList)
             elif len(self.blackjackList)==1:
                 self.takeLoserCards(self.blackjackList[0])
             else:
@@ -169,10 +187,11 @@ class BlackjackWarGame:
             exit()
 
     def takeLoserCards(self,winner):
+        winnerStack = pydealer.Stack()
         for player in self.playerList:
-            self.winnerStack.add(player.inPlay.empty())
-            self.winnerStack.shuffle()
-        winner.add(self.winnerStack,end='bottom')
+            winnerStack.add(player.inPlay.empty())
+        winnerStack.shuffle()
+        winner.add(winnerStack,end='bottom')
 
     def warTiebreak(self,tiebreakList):
         for player in tiebreakList:
