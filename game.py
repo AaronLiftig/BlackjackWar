@@ -22,6 +22,7 @@ class BlackjackWarGame:
             
             self.printHandSizes()
             self.getNextDealer()
+            self.deleteEliminated()
         #TODO
 
     def dealCards(self): # Just splits deck to deal, as cards are shuffled. Actual visual can deal one at a time.
@@ -64,8 +65,8 @@ class BlackjackWarGame:
         self.dealer = self.playerList[self.dealerIndex]
         print(self.dealer.name + ' is the dealer to start.','\n')
     
-    def getNextDealer(self):
-            pass
+    def getNextDealer(self): # TODO
+        pass
 
     def playRound(self):
         self.numOfPlayers = len(self.playerList)
@@ -87,8 +88,8 @@ class BlackjackWarGame:
 
     def playCards(self):
         for playerIndex in range(self.dealerIndex+1,self.dealerIndex+1 + self.numOfPlayers):
-            Index = playerIndex % self.numOfPlayers
-            player = self.playerList[Index]
+            indexVal = playerIndex % self.numOfPlayers
+            player = self.playerList[indexVal]
             player.inPlay = pydealer.Stack()
             try:
                 player.inPlay.add(player.deal(2))
@@ -201,9 +202,13 @@ class BlackjackWarGame:
         winnerStack.shuffle()
         winner.add(winnerStack.empty(return_cards=True),end='bottom')
 
-    def warTiebreak(self,tiebreakList):
+    def warTiebreak(self,tiebreakList): # TODO
         for player in tiebreakList:
-            pass
+            player.tiebreakStack = pydealer.Stack()
+            try:
+                player.deal(1)
+            except:
+                self.checkIfEliminated(player)
 
     def checkIfEliminated(self,player):	
         if player.size == 0:	
