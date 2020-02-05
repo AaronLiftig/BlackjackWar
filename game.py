@@ -23,7 +23,8 @@ class BlackjackWarGame:
             self.printHandSizes()
             self.getNextDealer()
             self.deleteEliminated()
-        #TODO
+            self.getRightDealerIndex()
+            print(self.dealer.name + ' is the next dealer.','\n')
 
     def dealCards(self): # Just splits deck to deal, as cards are shuffled. Actual visual can deal one at a time.
         self.numOfPlayers = input('Are you playing with 2 or 4 players? Enter 2 or 4 and press enter.\n')
@@ -66,7 +67,18 @@ class BlackjackWarGame:
         print(self.dealer.name + ' is the dealer to start.','\n')
     
     def getNextDealer(self): # TODO
-        pass
+        self.dealerIndex+=1
+        self.dealerIndex%=self.numOfPlayers
+        if self.playerList[self.dealerIndex].eliminated==False:
+            self.dealer=self.playerList[self.dealerIndex]
+        else:
+            self.getNextDealer()
+
+    def getRightDealerIndex(self):
+        if self.playerList[self.dealerIndex].name != self.dealer.name:
+            self.dealerIndex+=1
+            self.dealerIndex%=self.numOfPlayers
+            self.getRightDealerIndex()
 
     def playRound(self):
         self.numOfPlayers = len(self.playerList)
@@ -79,7 +91,8 @@ class BlackjackWarGame:
             if self.dealer.name == player.name:
                 print('##########')
                 print('It is the dealer\'s turn. The dealer\'s hidden card is a',player.inPlay[1])
-                print('So they have:',player.inPlay,'\n')
+                print('So they have:')
+                print(player.inPlay,'\n')
                 print(player.name + ' has a total of',player.handTotal)
                 print('\n')
             while player.result == 'continue':
@@ -95,6 +108,7 @@ class BlackjackWarGame:
                 player.inPlay.add(player.deal(2))
             except:
                 self.checkIfEliminated(player)
+                continue
             if self.dealer.name != player.name:
                 print('##########')
                 print(player.name + ' is showing...')
@@ -122,7 +136,7 @@ class BlackjackWarGame:
             player.result = 'bust'
             self.bustsList.append(player)
 
-    def getSum(self,player,handTotal=0): # TODO implement sum that adds last hit instead of counting whole hand each time
+    def getSum(self,player,handTotal=0): # TODO implement sum that adds last hit instead of counting whole hand
         for card in player.inPlay.cards:
             handTotal += self.cardValues[card.value]
         player.handTotal = handTotal
@@ -145,11 +159,11 @@ class BlackjackWarGame:
         if choice.lower() == 'h':
             try:
                 hit = player.deal(1)
+                print(player.name + ' gets a(n)',hit)
+                player.inPlay.add(hit)
+                self.checkTotal(player)
             except:
                 self.checkIfEliminated(player)
-            print(player.name + ' gets a(n)',hit)
-            player.inPlay.add(hit)
-            self.checkTotal(player)
         elif choice.lower() == 's':
             player.result = 'stay'
 
@@ -203,12 +217,30 @@ class BlackjackWarGame:
         winner.add(winnerStack.empty(return_cards=True),end='bottom')
 
     def warTiebreak(self,tiebreakList): # TODO
+        newTiebreakList = []
         for player in tiebreakList:
-            player.tiebreakStack = pydealer.Stack()
             try:
-                player.deal(1)
+                player.inPlay.add(player.deal(1))
+                player.handTotal = self.cardValues[player.inPlay.cards[0].value]
+                print(player.name + ' has drawn a',player.inPlay.cards[0])
+                if not newTiebreakList:
+                    newTiebreakList.append(player)
+                elif newTiebreakList[0].handTotal>player.handTotal:
+                    pass
+                elif newTiebreakList[0].handTotal<player.handTotal:
+                    newTiebreakList = []
+                    newTiebreakList.append(player)
+                elif newTiebreakList[0].handTotal==player.handTotal:
+                    newTiebreakList.append(player) 
             except:
                 self.checkIfEliminated(player)
+                tiebreakList.remove(player)
+                continue
+        if len(newTiebreakList)==1:
+            print(tiebreakList[0].name + ' has won the tiebreak.')
+            self.takeLoserCards(newTiebreakList[0])
+        else:
+            self.warTiebreak(newTiebreakList)
 
     def checkIfEliminated(self,player):	
         if player.size == 0:	
