@@ -22,7 +22,7 @@ class BlackjackWarGame:
             
             self.printHandSizes()
             self.getNextDealer()
-            self.deleteEliminated()
+            self.deleteEliminated() # TODO Find better way to eliminate player
             self.getRightDealerIndex()
             print(self.dealer.name + ' is the next dealer.','\n')
 
@@ -256,16 +256,7 @@ class BlackjackWarGame:
     def checkForGameWinner(self):
         if len(self.playerList) == 1:
             print(self.playerList[0].name + ' is the winner!','\n')
-            self.playAgain()
-
-    def playAgain(self):
-        playNewGame = input('Would you like to play again? Enter y for yes or n for no.')
-        if playNewGame.lower() == 'y':
-            pass
-        elif playNewGame.lower() == 'n':
             exit()
-        else:
-            self.playAgain()
 
 
 BlackjackWarGame()
