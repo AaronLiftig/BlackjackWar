@@ -7,9 +7,7 @@ class BlackjackWarGame:
                             "9":9,"8":8,"7":7,"6":6,"5":5,"4":4,"3":3,"2":2}
         self.playGame()
     
-    def playGame(self):
-        # TODO While True: # To play another game
-        # Plays full game
+    def playGame(self): # Plays full game
         self.deck = pydealer.Deck()
         self.deck.shuffle()
         self.dealCards()
@@ -17,6 +15,8 @@ class BlackjackWarGame:
         while True: # Plays one round
             self.bustsList = []
             self.blackjackList = []        
+            for player in self.playerList: # Find better way to implement aces equaling both 11 and 1
+                player.usedAces=0
             allBust = self.playRound()
             self.checkRoundWinner(allBust)
             
@@ -66,7 +66,7 @@ class BlackjackWarGame:
         self.dealer = self.playerList[self.dealerIndex]
         print(self.dealer.name + ' is the dealer to start.','\n')
     
-    def getNextDealer(self): # TODO
+    def getNextDealer(self):
         self.dealerIndex+=1
         self.dealerIndex%=self.numOfPlayers
         if self.playerList[self.dealerIndex].eliminated==False:
@@ -131,10 +131,13 @@ class BlackjackWarGame:
             player.result = 'blackjack'
             self.blackjackList.append(player)
         elif player.handTotal > 21:
-            self.checkForAce()
-            print(player.name + ' has ' + str(player.handTotal) + ' and has busted.','\n')
-            player.result = 'bust'
-            self.bustsList.append(player)
+            ace = self.checkForAce(player)
+            if ace == False:
+                print(player.name + ' has ' + str(player.handTotal) + ' and has busted.','\n')
+                player.result = 'bust'
+                self.bustsList.append(player)
+            elif ace == True:
+                player.result = 'continue'
 
     def getSum(self,player,handTotal=0): # TODO implement sum that adds last hit instead of counting whole hand
         for card in player.inPlay.cards:
@@ -162,25 +165,37 @@ class BlackjackWarGame:
                 print(player.name + ' has been eliminated.','\n'*2)
                 return
             hit = player.deal(1)
-            print(player.name + ' gets a(n)',hit)
+            print(player.name + ' gets a(n)',hit,'\n')
             player.inPlay.add(hit)
             self.checkTotal(player)        
         elif choice.lower() == 's':
             player.result = 'stay'
 
-    def checkForAce(self): # TODO Make ace count as 1 if player has one and busts
-        pass
+    def checkForAce(self,player): # TODO Only count additional aces
+        aceCount=0
+        for card in player.inPlay.cards:
+            if card.value=='Ace':
+                aceCount+=1
+        if aceCount>player.usedAces:
+            player.usedAces+=1
+            for ace in range(player.usedAces):
+                player.handTotal-=10
+            print(player.name + 'converted',player.usedAces,'ace(s) to 1 instead of 11.')
+            print('Now ' + player.name + ' has a total of',player.handTotal,'\n')
+            return True
+        else:
+            return False
 
     def checkRoundWinner(self,allBust):
         if allBust == False:
             if len(self.blackjackList)==0:
                 notBustList = [player for player in self.playerList if player not in self.bustsList]
+                tempList = []
                 if len(notBustList)==1:
                     print('##########')
-                    print(notBustList[0].name + ' has won this round.')
+                    print(notBustList[0].name + ' has won this round.','\n')
                     self.takeLoserCards(notBustList[0])
                 else:
-                    tempList = []
                     for player in notBustList:
                         if not tempList:
                             tempList.append(player)
@@ -191,22 +206,22 @@ class BlackjackWarGame:
                             tempList.append(player)
                         elif tempList[0].handTotal==player.handTotal:
                             tempList.append(player)
-                
-                if len(tempList)==1:
-                    print('##########')
-                    print(tempList[0].name + ' has won this round.')
-                    self.takeLoserCards(tempList[0])
-                else:
-                    self.warTiebreak(tempList)
+                if tempList:
+                    if len(tempList)==1:
+                        print('##########')
+                        print(tempList[0].name + ' has won this round.','\n')
+                        self.takeLoserCards(tempList[0])
+                    else:
+                        self.warTiebreak(tempList)
             elif len(self.blackjackList)==1:
                 print('##########')
-                print(self.blackjackList[0].name + ' has won this round.')
+                print(self.blackjackList[0].name + ' has won this round.','\n')
                 self.takeLoserCards(self.blackjackList[0])
             else:
                 self.warTiebreak(self.blackjackList)
         elif allBust == True:
             print('##########')
-            print('The dealer has won by default.')
+            print('The dealer has won by default.','\n')
             self.takeLoserCards(self.dealer)
 
     def takeLoserCards(self,winner):
@@ -217,7 +232,9 @@ class BlackjackWarGame:
         winnerStack.shuffle()
         winner.add(winnerStack.empty(return_cards=True),end='bottom')
 
-    def warTiebreak(self,tiebreakList): # TODO
+    def warTiebreak(self,tiebreakList):
+        print('##########')
+        print('There is a tiebreak, as more than one player has',tiebreakList[0].handTotal)
         newTiebreakList = []
         for player in tiebreakList:
             self.checkIfEliminated(player)
