@@ -15,7 +15,7 @@ class BlackjackWarGame:
         while True: # Plays one round
             self.bustsList = []
             self.blackjackList = []        
-            for player in self.playerList: # Find better way to implement aces equaling both 11 and 1
+            for player in self.playerList: # TODO Find better way to implement aces equaling both 11 and 1
                 player.usedAces=0
             allBust = self.playRound()
             self.checkRoundWinner(allBust)
@@ -23,7 +23,7 @@ class BlackjackWarGame:
             self.printHandSizes()
             self.getNextDealer()
             self.deleteEliminated() # TODO Find better way to eliminate player
-            self.getRightDealerIndex()
+            self.getDealerIndex()
             print(self.dealer.name + ' is the next dealer.','\n')
 
     def dealCards(self): # Just splits deck to deal, as cards are shuffled. Actual visual can deal one at a time.
@@ -74,11 +74,13 @@ class BlackjackWarGame:
         else:
             self.getNextDealer()
 
-    def getRightDealerIndex(self):
-        if self.playerList[self.dealerIndex].name != self.dealer.name:
-            self.dealerIndex+=1
-            self.dealerIndex%=self.numOfPlayers
-            self.getRightDealerIndex()
+    def getDealerIndex(self):
+        self.dealerIndex=0
+        for player in self.playerList:
+            if self.playerList[self.dealerIndex].name != self.dealer.name:
+               self.dealerIndex+=1 
+            else:
+                return
 
     def playRound(self):
         self.numOfPlayers = len(self.playerList)
