@@ -78,7 +78,7 @@ class BlackjackWarGame:
         self.dealerIndex=0
         for player in self.playerList:
             if self.playerList[self.dealerIndex].name != self.dealer.name:
-               self.dealerIndex+=1 
+                self.dealerIndex+=1 
             else:
                 return
 
