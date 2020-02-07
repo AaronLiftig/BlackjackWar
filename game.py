@@ -177,16 +177,13 @@ class BlackjackWarGame:
         aceCount=0
         for card in player.inPlay.cards:
             if card.value=='Ace':
-                aceCount+=1
-        if aceCount>player.usedAces:
-            player.usedAces+=1
-            for ace in range(player.usedAces):
                 player.handTotal-=10
-            print(player.name + 'converted',player.usedAces,'ace(s) to 1 instead of 11.')
-            print('Now ' + player.name + ' has a total of',player.handTotal,'\n')
-            return True
-        else:
-            return False
+                aceCount+=1
+                if player.handTotal<=21:
+                    print(player.name + ' converted',aceCount,'ace(s) to 1 instead of 11.')
+                    print('Now ' + player.name + ' has a total of',player.handTotal,'\n')
+                    return True
+        return False
 
     def checkRoundWinner(self,allBust):
         if allBust == False:
