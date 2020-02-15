@@ -20,15 +20,16 @@ class BlackjackWarGame:
             self.bustsList = []
             self.blackjackList = []        
             self.winnerStack = pydealer.Stack()
-            for player in self.playerList: # TODO Find better way to implement aces equaling both 11 and 1
-                player.usedAces=0
             
             allBust = self.playRound()
             self.checkRoundWinner(allBust)
             
             self.printHandSizes()
+            self.getNextDealer()
             for player in self.playerList:
                 self.checkIfEliminated(player)
+                self.deleteEliminated(player)
+            self.getDealerIndex()
             print(self.dealer.name + ' is the next dealer.','\n')
 
     def dealCards(self): # Just splits deck to deal, as cards are shuffled. Actual visual can deal one at a time.
@@ -67,7 +68,7 @@ class BlackjackWarGame:
         print('\n'*2)
 
     def pickRandomDealer(self):
-        self.dealerIndex = random.randint(0,len(self.playerList)-1)
+        self.dealerIndex = random.randint(0,self.numOfPlayers-1)
         self.dealer = self.playerList[self.dealerIndex]
         print(self.dealer.name + ' is the dealer to start.','\n')
     
@@ -89,12 +90,14 @@ class BlackjackWarGame:
 
     def playRound(self):
         self.numOfPlayers = len(self.playerList)
-        self.playCards()
+        self.startHand()
         for playerIndex in range(self.dealerIndex+1,self.dealerIndex+1 + self.numOfPlayers):
             if len(self.bustsList)==self.numOfPlayers-1:
                 return True
             playerIndex %= self.numOfPlayers
             player = self.playerList[playerIndex]
+            if player.eliminated == True:
+                continue
             if self.dealer.name == player.name:
                 print('##########')
                 print('It is the dealer\'s turn. The dealer\'s hidden card is a',player.inPlay[1])
@@ -104,11 +107,9 @@ class BlackjackWarGame:
                 print('\n')
             while player.result == 'continue':
                 self.getChoice(player)
-                if player.eliminated == True:
-                    break
         return False
 
-    def playCards(self):
+    def startHand(self):
         for playerIndex in range(self.dealerIndex+1,self.dealerIndex+1 + self.numOfPlayers):
             indexVal = playerIndex % self.numOfPlayers
             player = self.playerList[indexVal]
@@ -177,7 +178,7 @@ class BlackjackWarGame:
                 elif choice.lower() == 's':
                     player.result = 'stay'
             elif player.name == self.dealer.name:
-                self.dealerAI(player)
+                self.dealerAI(player) # TODO Might change
                 if player.result == 'hit':
                     self.getHit(player)
 
@@ -254,9 +255,8 @@ class BlackjackWarGame:
         for player in tiebreakList:
             self.checkIfEliminated(player)
             if player.eliminated==True:
-                tiebreakList.remove(player)
                 continue
-            player.inPlay.add(player.deal(1))
+            player.inPlay.add(player.deal(1),end='bottom')
             player.handTotal = self.cardValues[player.inPlay.cards[0].value]
             print(player.name + ' has drawn a',player.inPlay.cards[0])
             if not newTiebreakList:
@@ -279,17 +279,12 @@ class BlackjackWarGame:
             player.eliminated = True	
             print(player.name + ' has been eliminated.','\n')
             self.winnerStack.add(player.empty(return_cards=True))
-            self.winnerStack.add(player.inPlay.empty(return_cards=True))
-            self.deleteEliminated(player)	
+            self.winnerStack.add(player.inPlay.empty(return_cards=True))	
 
     def deleteEliminated(self,player):	
-        if self.dealer.name != player.name:
-            self.getDealerIndex()
-        else:
-            self.getNextDealer()
-            self.getDealerIndex()
-        self.playerList.remove(player)	
-        self.checkForGameWinner()
+        if player.eliminated == True:
+            self.playerList.remove(player)	
+            self.checkForGameWinner()
 
     def checkForGameWinner(self):
         if len(self.playerList) == 1:
@@ -320,15 +315,19 @@ class BlackjackWarGame:
     def dealerAI(self,player):
         tempList = self.playerList.copy()
         tempList.remove(player)
-        if all(player.handTotal > other.handTotal for other in tempList):
-            print('stay')
+        if all(player.handTotal >= other.handTotal for other in tempList):
+            print('stay\n')
             player.result = 'stay'
         else:
             if player.handTotal <= 16:
-                print('hit')
-                self.getHit(player) # TODO
+                if player.size >= 1:
+                    print('hit\n')
+                    self.getHit(player) # TODO
+                else:
+                    print('stay\n')
+                    player.result = 'stay'
             elif player.handTotal > 16:
-                print('stay')
+                print('stay\n')
                 player.result = 'stay'
 
 
