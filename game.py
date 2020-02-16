@@ -87,7 +87,7 @@ class BlackjackWarGame:
 
     def getNextDealer(self):
         for playerIndex in range(1,self.numOfPlayers+1):
-            
+            playerIndex %= self.numOfPlayers
             player = self.playerList[playerIndex]
             if player.eliminated==False:
                 self.dealer = player
