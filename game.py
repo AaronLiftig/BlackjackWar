@@ -12,14 +12,16 @@ class BlackjackWarGame:
         self.deck.shuffle()
         self.dealCards()
         
+        self.winnerStack = pydealer.Stack()
+
         self.askForHumanNum() # Added AI
         self.assignAI()
 
         self.pickRandomDealer()
+        self.createDealerList()
         while True: # Plays one round
             self.bustsList = []
-            self.blackjackList = []        
-            self.winnerStack = pydealer.Stack()
+            self.blackjackList = []
             
             allBust = self.playRound()
             self.checkRoundWinner(allBust)
@@ -29,7 +31,6 @@ class BlackjackWarGame:
             for player in self.playerList:
                 self.checkIfEliminated(player)
                 self.deleteEliminated(player)
-            self.getDealerIndex()
             print(self.dealer.name + ' is the next dealer.','\n')
 
     def dealCards(self): # Just splits deck to deal, as cards are shuffled. Actual visual can deal one at a time.
@@ -72,26 +73,29 @@ class BlackjackWarGame:
         self.dealer = self.playerList[self.dealerIndex]
         print(self.dealer.name + ' is the dealer to start.','\n')
     
-    def getNextDealer(self):
-        self.dealerIndex+=1
-        self.dealerIndex%=self.numOfPlayers
-        if self.playerList[self.dealerIndex].eliminated==False:
-            self.dealer=self.playerList[self.dealerIndex]
-        else:
-            self.getNextDealer()
-
-    def getDealerIndex(self):
-        self.dealerIndex=0
+    def createDealerList(self):
+        tempList = []
+        counter=0
         for player in self.playerList:
-            if self.playerList[self.dealerIndex].name != self.dealer.name:
-                self.dealerIndex+=1 
+            if player.name != self.dealer.name:
+                counter+=1
             else:
+                for playerIndex in range(counter,counter+len(self.playerList)):
+                    playerIndex %= len(self.playerList)
+                    tempList.append(self.playerList[playerIndex])
+        self.playerList = tempList
+
+    def getNextDealer(self):
+        for player in self.playerList:
+            if player.eliminated==False:
+                self.dealer = player
+                self.createDealerList()
                 return
 
     def playRound(self):
         self.numOfPlayers = len(self.playerList)
         self.startHand()
-        for playerIndex in range(self.dealerIndex+1,self.dealerIndex+1 + self.numOfPlayers):
+        for playerIndex in range(1,self.numOfPlayers+1):
             if len(self.bustsList)==self.numOfPlayers-1:
                 return True
             playerIndex %= self.numOfPlayers
@@ -100,7 +104,10 @@ class BlackjackWarGame:
                 continue
             if self.dealer.name == player.name:
                 print('##########')
-                print('It is the dealer\'s turn. The dealer\'s hidden card is a',player.inPlay[1])
+                if player.inPlay.size == 2:
+                    print('It is the dealer\'s turn. The dealer\'s hidden card is a',player.inPlay[1])
+                elif player.inPlay.size == 1:
+                    print('The dealer only has one card remaining.')
                 print('So they have:')
                 print(player.inPlay,'\n')
                 print(player.name + ' has a total of',player.handTotal)
@@ -110,11 +117,11 @@ class BlackjackWarGame:
         return False
 
     def startHand(self):
-        for playerIndex in range(self.dealerIndex+1,self.dealerIndex+1 + self.numOfPlayers):
-            indexVal = playerIndex % self.numOfPlayers
-            player = self.playerList[indexVal]
+        for playerIndex in range(1,self.numOfPlayers+1):
+            playerIndex %= self.numOfPlayers
+            player = self.playerList[playerIndex]
             player.inPlay = pydealer.Stack()
-            self.checkIfEliminated(player,needed=2)
+            self.checkIfEliminated(player)
             if player.eliminated == True:
                 continue
             player.inPlay.add(player.deal(2))
@@ -274,8 +281,8 @@ class BlackjackWarGame:
         else:
             self.warTiebreak(newTiebreakList)
 
-    def checkIfEliminated(self,player,needed=1):	
-        if player.size < needed:	
+    def checkIfEliminated(self,player):	
+        if player.size == 0:	
             player.eliminated = True	
             print(player.name + ' has been eliminated.','\n')
             self.winnerStack.add(player.empty(return_cards=True))
