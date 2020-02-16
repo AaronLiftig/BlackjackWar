@@ -73,7 +73,7 @@ class BlackjackWarGame:
         self.dealer = self.playerList[self.dealerIndex]
         print(self.dealer.name + ' is the dealer to start.','\n')
     
-    def createDealerList(self):
+    def createDealerList(self): # Done so that deleting players doesn't mess up finding next dealer
         tempList = []
         counter=0
         for player in self.playerList:
@@ -81,12 +81,14 @@ class BlackjackWarGame:
                 counter+=1
             else:
                 for playerIndex in range(counter,counter+len(self.playerList)):
-                    playerIndex %= len(self.playerList)
+                    playerIndex %= self.numOfPlayers
                     tempList.append(self.playerList[playerIndex])
         self.playerList = tempList
 
     def getNextDealer(self):
-        for player in self.playerList:
+        for playerIndex in range(1,self.numOfPlayers+1):
+            
+            player = self.playerList[playerIndex]
             if player.eliminated==False:
                 self.dealer = player
                 self.createDealerList()
