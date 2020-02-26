@@ -27,9 +27,10 @@ class BlackjackWarGame:
             self.checkRoundWinner(allBust)
             
             self.printHandSizes()
-            self.getNextDealer()
             for player in self.playerList:
                 self.checkIfEliminated(player)
+            self.getNextDealer()
+            for player in self.playerList:
                 self.deleteEliminated(player)
             print(self.dealer.name + ' is the next dealer.','\n')
 
