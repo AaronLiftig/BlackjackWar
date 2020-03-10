@@ -6,3 +6,6 @@
 
 ## There is an option to play 2 or 4 players because the deck needs to be split evenly.
 ## There is a simple computer AI (mainly for testing purposes), which will be upgraded in the future. You can choose anywhere between zero or all computer players.
+
+## The game can be played here:
+### https://repl.it/@AaronLiftig/BlackjackWar
