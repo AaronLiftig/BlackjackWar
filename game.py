@@ -309,12 +309,11 @@ class BlackjackWarGame:
             self.askForHumanNum()
     
     def assignAI(self):
-        if self.numOfPlayers != self.humanPlayerNum:
-            for playerIndex in range(self.numOfPlayers):
-                if playerIndex < self.humanPlayerNum:
-                    self.playerList[playerIndex].human = True
-                else:
-                    self.playerList[playerIndex].human = False
+        for playerIndex in range(self.numOfPlayers):
+            if playerIndex < self.humanPlayerNum:
+                self.playerList[playerIndex].human = True
+            else:
+                self.playerList[playerIndex].human = False
     
     def gameAI(self,player):      
         if player.name != self.dealer.name:
