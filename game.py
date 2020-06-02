@@ -32,10 +32,15 @@ class BlackjackWarGame:
             self.getNextDealer()
             for player in self.playerList:
                 self.deleteEliminated(player)
+            if any(player.human for player in self.playerList):
+                input('Press enter to continue to next round.')
+                print('######################################','\n'*2)
             print(self.dealer.name + ' is the next dealer.','\n')
 
     def dealCards(self): # Just splits deck to deal, as cards are shuffled. Actual visual can deal one at a time.
-        self.numOfPlayers = int(input('Would you like to play with 2 or 4 players? Enter 2 or 4 and press enter.\n'))
+        self.numOfPlayers = None
+        while self.numOfPlayers not in (2,4):
+            self.numOfPlayers = int(input('Would you like to play with 2 or 4 players? Enter 2 or 4 and press enter.\n'))
         if self.numOfPlayers == 2:
             self.Player1 = pydealer.Stack()
             self.Player1.add(self.deck.deal(26))
@@ -182,7 +187,9 @@ class BlackjackWarGame:
             self.gameAI(player)
         elif player.human == True:
             if player.name != self.dealer.name:
-                choice = input('Would ' + player.name + ' like to hit? Enter h for hit or s for stay.\n')
+                choice = None
+                while choice not in ('h','s'):
+                    choice = input('Would ' + player.name + ' like to hit? Enter h for hit or s for stay.\n')
                 if choice.lower() == 'h':
                     self.getHit(player)        
                 elif choice.lower() == 's':
@@ -304,17 +311,19 @@ class BlackjackWarGame:
     # AI methods start here:
     
     def askForHumanNum(self):
-        self.humanPlayerNum = int(input('How many human players are there? Enter an integer.\n'))
-        if (not isinstance(self.humanPlayerNum,int))|(self.humanPlayerNum > self.numOfPlayers)|(self.humanPlayerNum < 0):
-            self.askForHumanNum()
-    
+        self.humanPlayerNum = -1 # None not possible because of inequalities in while loop
+        while (not isinstance(self.humanPlayerNum,int))|(self.humanPlayerNum > self.numOfPlayers)|(self.humanPlayerNum < 0):
+            self.humanPlayerNum = int(input('How many human players are there? Enter an integer.\n'))
+
+        print('While a player is the dealer, they automatically follow the Stay-On-17 rule. The computer players currently always follow this rule.','\n'*2)
+
     def assignAI(self):
         for playerIndex in range(self.numOfPlayers):
             if playerIndex < self.humanPlayerNum:
                 self.playerList[playerIndex].human = True
             else:
                 self.playerList[playerIndex].human = False
-    
+
     def gameAI(self,player):      
         if player.name != self.dealer.name:
             self.dealerAI(player) # TODO
