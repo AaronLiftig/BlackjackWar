@@ -112,9 +112,7 @@ class BlackjackWarGame:
                 continue
             if self.dealer.name == player.name:
                 print('##########')
-                if player.inPlay.size == 2:
-                    print('It is the dealer\'s turn. The dealer\'s hidden card is a',player.inPlay[1])
-                elif player.inPlay.size == 1:
+                if player.inPlay.size == 1:
                     print('The dealer only has one card remaining.')
                 print('So they have:')
                 print(player.inPlay,'\n')
@@ -141,10 +139,8 @@ class BlackjackWarGame:
             elif self.dealer.name == player.name:
                 print('##########')
                 print(player.name + ', the dealer, is showing...')           
-                print(player.inPlay[0],'\n')
-                self.checkTotal(player)
-                if player.result == 'continue':
-                    print(player.name + ' is showing a total of',self.cardValues[player.inPlay[0].value],'\n')    
+                print(player.inPlay,'\n')
+                self.checkTotal(player)  
 
     def checkTotal(self,player):
         self.getSum(player)
@@ -186,18 +182,13 @@ class BlackjackWarGame:
         if player.human == False:
             self.gameAI(player)
         elif player.human == True:
-            if player.name != self.dealer.name:
-                choice = None
-                while choice not in ('h','s'):
-                    choice = input('Would ' + player.name + ' like to hit? Enter h for hit or s for stay.\n')
-                if choice.lower() == 'h':
-                    self.getHit(player)        
-                elif choice.lower() == 's':
-                    player.result = 'stay'
-            elif player.name == self.dealer.name:
-                self.dealerAI(player) # TODO Might change
-                if player.result == 'hit':
-                    self.getHit(player)
+            choice = None
+            while choice not in ('h','s'):
+                choice = input('Would ' + player.name + ' like to hit? Enter h for hit or s for stay.\n')
+            if choice.lower() == 'h':
+                self.getHit(player)        
+            elif choice.lower() == 's':
+                player.result = 'stay'
 
     def getHit(self,player):
         self.checkIfEliminated(player)
@@ -315,7 +306,8 @@ class BlackjackWarGame:
         while (not isinstance(self.humanPlayerNum,int))|(self.humanPlayerNum > self.numOfPlayers)|(self.humanPlayerNum < 0):
             self.humanPlayerNum = int(input('How many human players are there? Enter an integer.\n'))
 
-        print('While a player is the dealer, they automatically follow the Stay-On-17 rule. The computer players currently always follow this rule.','\n'*2)
+        print('Human players are assigned first. If there are three human players, they will be player 1, player 2, and player 3.')
+        print('The computer players currently follow the Stay-On-17 rule.','\n'*2)
 
     def assignAI(self):
         for playerIndex in range(self.numOfPlayers):
@@ -345,8 +337,8 @@ class BlackjackWarGame:
                     print('stay\n')
                     player.result = 'stay'
             elif player.handTotal > 16:
-                print('stay\n')
-                player.result = 'stay'
+                print('hit\n')
+                player.result = 'hit'
 
 
 BlackjackWarGame()
