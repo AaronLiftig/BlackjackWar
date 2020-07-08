@@ -163,8 +163,7 @@ class BlackjackWarGame:
         for card in player.inPlay.cards:
             handTotal += self.cardValues[card.value]
         player.handTotal = handTotal
-        if self.dealer.name != player.name:
-            print(player.name + ' has a total of',player.handTotal,'\n')
+        print(player.name + ' has a total of',player.handTotal,'\n')
 
     def checkFor5Cards(self,player):
         if player.inPlay.size < 5:
@@ -337,8 +336,8 @@ class BlackjackWarGame:
                     print('stay\n')
                     player.result = 'stay'
             elif player.handTotal > 16:
-                print('hit\n')
-                player.result = 'hit'
+                print('stay\n')
+                player.result = 'stay'
 
 
 BlackjackWarGame()
