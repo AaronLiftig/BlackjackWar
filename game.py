@@ -65,8 +65,6 @@ class BlackjackWarGame:
             for player,nameString in zip(self.playerList,self.playerNames):
                 player.name = nameString
                 player.eliminated = False
-        else:
-            self.dealCards()
 
     def printHandSizes(self):
         print('The current hand sizes are now:')
