@@ -4,9 +4,9 @@ from blackjack_war_ai import BlackjackWarAI
 
 class BlackjackWarGame(BlackjackWarAI):
     def __init__(self,numOfPlayers=None,humanPlayerNum=-1,numOfGames=1,ask=True):
-        cardValues = {"Ace":11,"King":10,"Queen":10,"Jack":10,"10":10,
-                      "9":9,"8":8,"7":7,"6":6,"5":5,"4":4,"3":3,"2":2}
-        
+        cardValues = {'Ace':11,'King':10,'Queen':10,'Jack':10,'10':10,
+                      '9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2}
+
         resultList = []
 
         if ask not in (True,False):
@@ -24,8 +24,9 @@ class BlackjackWarGame(BlackjackWarAI):
             print('Human players are assigned first (e.g., If there are three human players, they will be players 1, 2, and 3.')
             print('The computer players currently hit on 16 and stay on 17 unless behind.','\n'*2)
 
+            stateDict = self.CreateStateDict(numOfPlayers)
             while True:
-                winner = self.PlayGame(numOfPlayers,humanPlayerNum,cardValues)
+                winner = self.PlayGame(numOfPlayers,humanPlayerNum,cardValues,stateDict)
                 resultList.append(winner.name)
 
                 playAgain = None
@@ -35,14 +36,44 @@ class BlackjackWarGame(BlackjackWarAI):
                     break
         else:
             for game in range(numOfGames):
-                winner = self.PlayGame(numOfPlayers,humanPlayerNum,cardValues)
+                stateDict = self.CreateStateDict(numOfPlayers)
+                winner = self.PlayGame(numOfPlayers,humanPlayerNum,cardValues,stateDict)
                 resultList.append(winner.name)
 
         print('The final score was:')
         for val in set(resultList):
             print(val+':',resultList.count(val))
+    
+    def CreateStateDict(self,numOfPlayers):  
+        if numOfPlayers == 2:
+            stateDict = {'eliminated':[0,0],
+                         'turn':[0], #binary
+                         'dealer':[0], #binary
+                         'hand totals':[0,0],
+                         'card counts':[0,0]}
+            playerList = [[0],[1]]
+        
+        elif numOfPlayers == 4:
+            stateDict = {'eliminated':[0,0,0,0],
+                         'turn':[0,0], #binary
+                         'dealer':[0,0], #binary
+                         'hand totals':[0,0,0,0],
+                         'card counts':[0,0,0,0]} 
+            playerList = [[0,0],[0,1],[1,0],[1,1]]
+        
+        cardStateList = [0 for _ in range(int(numOfPlayers/2)+2)]
+        cardDict = {}
+        deck = pydealer.Deck()
 
-    def PlayGame(self,numOfPlayers,humanPlayerNum,cardValues): # Plays full game
+        for card in deck.cards:
+            cardDict.update({card.abbrev:cardStateList})
+
+        stateDict.update({'card state':cardDict,
+                          'player list':playerList})
+        
+        return stateDict
+
+    def PlayGame(self,numOfPlayers,humanPlayerNum,cardValues,stateDict): # Plays full game
         deck = pydealer.Deck()
         deck.shuffle()
         playerList = self.DealCards(deck,numOfPlayers)
@@ -53,6 +84,7 @@ class BlackjackWarGame(BlackjackWarAI):
         playerList = self.assignAI(playerList,numOfPlayers,humanPlayerNum)
 
         dealer = self.PickRandomDealer(playerList)
+        stateDict = self.UpdateState(stateDict,dealer=dealer)
         playerList = self.CreateDealerList(playerList,dealer,numOfPlayers)
         while True: # Plays one round
             bustsList = []
@@ -61,14 +93,17 @@ class BlackjackWarGame(BlackjackWarAI):
             allBust,playerList,blackjackList,bustsList,winnerStack,numOfPlayers = self.PlayRound(playerList,blackjackList,
                                                                                                  bustsList,dealer,
                                                                                                  numOfPlayers,winnerStack,
-                                                                                                 cardValues)
+                                                                                                 cardValues,stateDict)
             playerList,blackjackList,bustsList,winnerStack = self.CheckRoundWinner(allBust,playerList,dealer,blackjackList,
-                                                                                   bustsList,winnerStack,cardValues)
+                                                                                   bustsList,winnerStack,cardValues,
+                                                                                   stateDict)
             
             self.PrintHandSizes(playerList)
             for player in playerList:
+                stateDict = self.UpdateState(stateDict,player=player,updateCardCounts=True)
                 player,winnerStack = self.CheckIfEliminated(player,winnerStack)
             playerList,dealer,numOfPlayers = self.GetNextDealer(playerList,numOfPlayers)
+            stateDict = self.UpdateState(stateDict,dealer=dealer)
             playersRemaining = self.DeleteEliminated(playerList)
             if not isinstance(playersRemaining,list):
                 return playersRemaining
@@ -87,9 +122,12 @@ class BlackjackWarGame(BlackjackWarAI):
             Player2.add(deck.deal(26))
             playerList = [Player1,Player2]
             playerNamesList = ['Player 1','Player 2']
+            playerNum = 0
             for player,nameString in zip(playerList,playerNamesList):
                 player.name = nameString
                 player.eliminated = False
+                player.index = playerNum
+                playerNum += 1
         elif numOfPlayers == 4:
             Player1 = pydealer.Stack()
             Player1.add(deck.deal(13))
@@ -101,9 +139,12 @@ class BlackjackWarGame(BlackjackWarAI):
             Player4.add(deck.deal(13))
             playerList = [Player1,Player2,Player3,Player4]
             playerNames = ['Player 1','Player 2','Player 3','Player 4']
+            playerNum = 0
             for player,nameString in zip(playerList,playerNames):
                 player.name = nameString
                 player.eliminated = False
+                player.index = playerNum
+                playerNum += 1
         return playerList
 
     def PrintHandSizes(self,playerList):
@@ -140,9 +181,9 @@ class BlackjackWarGame(BlackjackWarAI):
                 playerList = self.CreateDealerList(playerList,dealer,numOfPlayers)
                 return playerList,dealer,numOfPlayers
 
-    def PlayRound(self,playerList,blackjackList,bustsList,dealer,numOfPlayers,winnerStack,cardValues):
+    def PlayRound(self,playerList,blackjackList,bustsList,dealer,numOfPlayers,winnerStack,cardValues,stateDict):
         numOfPlayers = len(playerList)
-        playerList = self.StartHand(playerList,dealer,blackjackList,bustsList,numOfPlayers,winnerStack,cardValues)
+        playerList = self.StartHand(playerList,dealer,blackjackList,bustsList,numOfPlayers,winnerStack,cardValues,stateDict)
         for playerIndex in range(1,numOfPlayers+1):
             if len(bustsList)==numOfPlayers-1:
                 return True,playerList,blackjackList,bustsList,winnerStack,numOfPlayers
@@ -152,30 +193,28 @@ class BlackjackWarGame(BlackjackWarAI):
                 continue
             while player.result == 'continue':
                 player,playerList,blackjackList,bustsList = self.GetChoice(player,playerList,dealer,blackjackList,bustsList,
-                                                                           winnerStack,cardValues)
+                                                                           winnerStack,cardValues,stateDict)
                 if player.eliminated == True:
                     break
         return False,playerList,blackjackList,bustsList,winnerStack,numOfPlayers
 
-    def StartHand(self,playerList,dealer,blackjackList,bustsList,numOfPlayers,winnerStack,cardValues):
+    def StartHand(self,playerList,dealer,blackjackList,bustsList,numOfPlayers,winnerStack,cardValues,stateDict):
         for playerIndex in range(1,numOfPlayers+1):
             playerIndex %= numOfPlayers
             player = playerList[playerIndex]
             player.inPlay = pydealer.Stack()
+            stateDict = self.UpdateState(stateDict,player=player,updateTurn=True)
             player,winnerStack = self.CheckIfEliminated(player,winnerStack)
             if player.eliminated == True:
                 continue
             player.inPlay.add(player.deal(2))
-            if dealer.name != player.name:
-                print('##########')
-                print(player.name + ' is showing...')
-                print(player.inPlay,'\n')
-                player,blackjackList,bustsList = self.CheckTotal(player,blackjackList,bustsList,cardValues)
-            elif dealer.name == player.name:
-                print('##########')
-                print(player.name + ', the dealer, is showing...')           
-                print(player.inPlay,'\n')
-                player,blackjackList,bustsList = self.CheckTotal(player,blackjackList,bustsList,cardValues) 
+            stateDict = self.UpdateState(stateDict,player=player,updateCardState=True)
+            
+            print('##########')
+            print(player.name + ' is showing...')
+            print(player.inPlay,'\n')
+            player,blackjackList,bustsList = self.CheckTotal(player,blackjackList,bustsList,cardValues)
+            stateDict = self.UpdateState(stateDict,player=player,updateHandTotals=True,updateCardState=True)
         return playerList 
 
     def CheckTotal(self,player,blackjackList,bustsList,cardValues):
@@ -211,7 +250,7 @@ class BlackjackWarGame(BlackjackWarAI):
             blackjackList.append(player)
             return 'blackjack',blackjackList
         
-    def GetChoice(self,player,playerList,dealer,blackjackList,bustsList,winnerStack,cardValues):
+    def GetChoice(self,player,playerList,dealer,blackjackList,bustsList,winnerStack,cardValues,stateDict):
         print('#####')
         print('It is ' + player.name +'\'s turn.')
         print(player.name + ' is showing a total of '+ str(player.handTotal) + '.')
@@ -221,27 +260,29 @@ class BlackjackWarGame(BlackjackWarAI):
                                                                                 winnerStack,cardValues)
             if player.result == 'hit':
                 player,blackjackList,bustsList,winnerStack = self.GetHit(player,blackjackList,bustsList,winnerStack,
-                                                                         cardValues)
+                                                                         cardValues,stateDict)
         elif player.human == True:
             choice = None
             while choice not in ('h','s'):
                 choice = input('Would ' + player.name + ' like to hit? Enter h for hit or s for stay.\n')
             if choice.lower() == 'h':
                 player,blackjackList,bustsList,winnerStack = self.GetHit(player,blackjackList,bustsList,winnerStack,
-                                                                         cardValues)        
+                                                                         cardValues,stateDict)        
             elif choice.lower() == 's':
                 player.result = 'stay'
         return player,playerList,blackjackList,bustsList
 
-    def GetHit(self,player,blackjackList,bustsList,winnerStack,cardValues):
+    def GetHit(self,player,blackjackList,bustsList,winnerStack,cardValues,stateDict):
         player,winnerStack = self.CheckIfEliminated(player,winnerStack)
         if player.eliminated==True:
+            stateDict = self.UpdateState(stateDict,player=player,updateEliminated=True)
             print(player.name + ' has been eliminated.','\n'*2)
             return winnerStack
         hit = player.deal(1)
         print(player.name + ' gets a(n)',hit,'\n')
         player.inPlay.add(hit)
         player,blackjackList,bustsList = self.CheckTotal(player,blackjackList,bustsList,cardValues)
+        stateDict = self.UpdateState(stateDict,player=player,updateHandTotals=True,updateCardState=True)
         return player,blackjackList,bustsList,winnerStack
 
     def CheckForAce(self,player): # TODO Only count additional aces
@@ -256,14 +297,14 @@ class BlackjackWarGame(BlackjackWarAI):
                     return True,player
         return False,player
 
-    def CheckRoundWinner(self,allBust,playerList,dealer,blackjackList,bustsList,winnerStack,cardValues):
+    def CheckRoundWinner(self,allBust,playerList,dealer,blackjackList,bustsList,winnerStack,cardValues,stateDict):
         if allBust == False:
             if len(blackjackList)==0:
                 notBustList = [player for player in playerList if player not in bustsList]
                 if len(notBustList)==1:
                     print('##########')
                     print(notBustList[0].name + ' has won this round.','\n')
-                    playerList,winnerStack = self.TakeLoserCards(notBustList[0],playerList,winnerStack)
+                    playerList,winnerStack = self.TakeLoserCards(notBustList[0],playerList,winnerStack,stateDict)
                 else:
                     tempList = []
                     for player in notBustList:
@@ -279,22 +320,23 @@ class BlackjackWarGame(BlackjackWarAI):
                     if len(tempList)==1:
                         print('##########')
                         print(tempList[0].name + ' has won this round.','\n')
-                        playerList,winnerStack = self.TakeLoserCards(tempList[0],playerList,winnerStack)
+                        playerList,winnerStack = self.TakeLoserCards(tempList[0],playerList,winnerStack,stateDict)
                     else:
-                        playerList,winnerStack = self.WarTiebreak(playerList,tempList,winnerStack,cardValues)
+                        playerList,winnerStack = self.WarTiebreak(playerList,tempList,winnerStack,cardValues,stateDict)
             elif len(blackjackList)==1:
                 print('##########')
                 print(blackjackList[0].name + ' has won this round.','\n')
-                playerList,winnerStack = self.TakeLoserCards(blackjackList[0],playerList,winnerStack)
+                playerList,winnerStack = self.TakeLoserCards(blackjackList[0],playerList,winnerStack,stateDict)
             else:
-                playerList,winnerStack = self.WarTiebreak(playerList,blackjackList,winnerStack,cardValues)
+                playerList,winnerStack = self.WarTiebreak(playerList,blackjackList,winnerStack,cardValues,stateDict)
         elif allBust == True:
             print('##########')
             print('The dealer has won by default.','\n')
-            playerList,winnerStack = self.TakeLoserCards(dealer,playerList,winnerStack)
+            playerList,winnerStack = self.TakeLoserCards(dealer,playerList,winnerStack,stateDict)
         return playerList,blackjackList,bustsList,winnerStack
 
-    def TakeLoserCards(self,winner,playerList,winnerStack):
+    def TakeLoserCards(self,winner,playerList,winnerStack,stateDict):
+        stateDict = self.UpdateState(playerList,stateDict,winner=winner)
         for player in playerList:
             winnerStack.add(player.inPlay.empty(return_cards=True))
         print(winner.name + ' has won',winnerStack.size,'cards.','\n'*2)
@@ -302,7 +344,7 @@ class BlackjackWarGame(BlackjackWarAI):
         winner.shuffle()
         return playerList,winnerStack
 
-    def WarTiebreak(self,playerList,tiebreakList,winnerStack,cardValues):
+    def WarTiebreak(self,playerList,tiebreakList,winnerStack,cardValues,stateDict):
         print('##########')
         print('There is a tiebreak, as more than one player has',tiebreakList[0].handTotal)
         newTiebreakList = []
@@ -324,9 +366,9 @@ class BlackjackWarGame(BlackjackWarAI):
                 newTiebreakList.append(player)
         if len(newTiebreakList)==1:
             print(newTiebreakList[0].name + ' has won the tiebreak.')
-            playerList,winnerStack = self.TakeLoserCards(newTiebreakList[0],playerList,winnerStack)
+            playerList,winnerStack = self.TakeLoserCards(newTiebreakList[0],playerList,winnerStack,stateDict)
         else:
-            playerList,winnerStack = self.WarTiebreak(playerList,newTiebreakList,winnerStack,cardValues)
+            playerList,winnerStack = self.WarTiebreak(playerList,newTiebreakList,winnerStack,cardValues,stateDict)
         return playerList,winnerStack
 
     def CheckIfEliminated(self,player,winnerStack):	
@@ -352,28 +394,64 @@ class BlackjackWarGame(BlackjackWarAI):
             return playerList[0]
         return None
 
-    def OutputState(self,playerList):
-        player
+    def UpdateState(self,stateDict,player=None,dealer=None,updateEliminated=False,updateTurn=False,updateHandTotals=False,
+                    updateCardCounts=False,updateCardState=False,winner=None):
+        try:
+            pList = stateDict['player list']
+        except:
+            print(stateDict)
+            exit()
+        
+        if updateEliminated == True: #
+            if player.eliminated == True:
+                stateDict['eliminated'][player.index] = 1
+            self.printStateDict(stateDict,1)
 
-        for player in playerList:
+        if updateTurn == True: #
+            stateDict['turn'] = pList[player.index]
+            self.printStateDict(stateDict,2)
+        
+        if dealer is not None: #
+            stateDict['dealer'] = pList[dealer.index]
+            self.printStateDict(stateDict,3)
+
+        if updateHandTotals == True: #
+            stateDict['hand totals'][player.index] = player.handTotal
+            self.printStateDict(stateDict,4)
+
+        if updateCardCounts == True: #
+           stateDict['card counts'][player.index] = player.size
+           self.printStateDict(stateDict,5)
+
+        if updateCardState == True:      
+            for card in player.inPlay.cards:
+                stateDict['card state'][card.abbrev][0] = 1
+                for i in range(len(pList[player.index])):
+                    stateDict['card state'][card.abbrev][i+1] = pList[player.index][i]
+                stateDict['card state'][card.abbrev][len(pList[player.index])+1] = 1
+            self.printStateDict(stateDict,6)
+
+        if winner is not None: #
+            for card in stateDict['card state'].keys():
+                if stateDict['card state'][card][len(pList[winner.index])+1] == 1:
+                    for i in range(len(pList[winner.index])):
+                        stateDict['card state'][card.abbrev][i+1] = pList[winner.index][i]
+                    stateDict['card state'][card][len(pList[winner.index])+1] = 0 # Removes cards from being in play
             
-            STATE = [
-                0 or 1 # whose turn it is
-                0 or 1 # who is the dealer
-                0 or 2 to 21 # value of inPlay cards for player 1
-                0 or 2 to 21 # value of inPlay cards for player 2
-                0 or 1 (x52) # whether card's owner is known
-                    0 or 1 (x52) # which player owns each known card (default 0)
-            ]
-            #size
-            #handTotal
-            #inPlay.cards
-            #cards "known" accumulated inPlay.cards by winner
-            #eliminated
-            #turn
-            #dealer
-            pass
+            if len(stateDict['hand totals']) == 2: # Resets handTotal after there's a round winner
+                stateDict['hand totals'] = [0,0]
+            elif len(stateDict['hand totals']) == 4:
+                stateDict['hand totals'] = [0,0,0,0]
+            self.printStateDict(stateDict,7)
+
+        return stateDict       
+
+    def printStateDict(self,stateDict,num):
+        print(num)
+        for key in stateDict.keys():
+            print(key+':',stateDict[key],'\n')
+       
 
 # BlackjackWarGame(numOfPlayers=None,humanPlayerNum=-1,numOfGames=1,ask=True)
 # If ask == True: players will be prompted for numOfPlayers and humanPlayerNum and will be asked to play again.
-BlackjackWarGame()
+BlackjackWarGame(numOfPlayers=4,humanPlayerNum=0,numOfGames=1,ask=False)
