@@ -9,6 +9,12 @@ class BlackjackWarGame(BlackjackWarAI):
         
         resultList = []
 
+        if ask not in (True,False):
+            Exception('The ask parameter is a boolean value (True or False).')
+        
+        if not (isinstance(numOfGames,int) and numOfGames > 0):
+            Exception('The numOfGames parameter must be a positive integer')
+
         if ask == True:
             while numOfPlayers not in (2,4):
                 numOfPlayers = int(input('Would you like to play with 2 or 4 players? Enter 2 or 4 and press enter.\n'))
@@ -346,19 +352,28 @@ class BlackjackWarGame(BlackjackWarAI):
             return playerList[0]
         return None
 
-    # AI methods start here:
-    
-
-
     def OutputState(self,playerList):
+        player
+
         for player in playerList:
-            #name
+            
+            STATE = [
+                0 or 1 # whose turn it is
+                0 or 1 # who is the dealer
+                0 or 2 to 21 # value of inPlay cards for player 1
+                0 or 2 to 21 # value of inPlay cards for player 2
+                0 or 1 (x52) # whether card's owner is known
+                    0 or 1 (x52) # which player owns each known card (default 0)
+            ]
             #size
             #handTotal
             #inPlay.cards
             #cards "known" accumulated inPlay.cards by winner
             #eliminated
+            #turn
+            #dealer
             pass
 
-
+# BlackjackWarGame(numOfPlayers=None,humanPlayerNum=-1,numOfGames=1,ask=True)
+# If ask == True: players will be prompted for numOfPlayers and humanPlayerNum and will be asked to play again.
 BlackjackWarGame()
