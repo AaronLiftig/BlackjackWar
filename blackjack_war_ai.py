@@ -11,7 +11,7 @@ class BlackjackWarAI:
                 playerList[playerIndex].human = False
         return playerList
 
-    def GameAI(self,player,playerList,blackjackList,bustsList,winnerStack,cardValues):
+    def GameAI(self,player,playerList,state):
         tempList = playerList.copy()
         tempList.remove(player)
         if all(player.handTotal >= other.handTotal for other in tempList):
@@ -28,4 +28,4 @@ class BlackjackWarAI:
             elif player.handTotal > 16:
                 print('stay\n')
                 player.result = 'stay'
-        return player,playerList,blackjackList,bustsList,winnerStack
+        return player
