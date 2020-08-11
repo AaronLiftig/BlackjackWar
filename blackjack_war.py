@@ -70,7 +70,6 @@ class BlackjackWarGame(BlackjackWarAI):
 
         stateDict.update({'card state':cardDict,
                           'player list':playerList})
-        
         return stateDict
 
     def PlayGame(self,numOfPlayers,humanPlayerNum,cardValues,stateDict): # Plays full game
@@ -232,7 +231,16 @@ class BlackjackWarGame(BlackjackWarAI):
                 player.result = 'bust'
                 bustsList.append(player)
             elif ace == True:
-                player.result = 'continue'
+                if player.handTotal < 21:
+                    player.result == 'continue'
+                elif player.handTotal == 21:
+                    print(player.name + ' has blackjack!','\n')
+                    player.result = 'blackjack'
+                    blackjackList.append(player)
+                elif player.handTotal > 21:
+                    print(player.name + ' has ' + str(player.handTotal) + ' and has busted.','\n')
+                    player.result = 'bust'
+                    bustsList.append(player)      
         return player,blackjackList,bustsList
 
     def GetSum(self,player,cardValues,handTotal=0): # TODO implement sum that adds last hit instead of counting whole hand
@@ -439,7 +447,6 @@ class BlackjackWarGame(BlackjackWarAI):
             elif len(stateDict['hand totals']) == 4:
                 stateDict['hand totals'] = [0,0,0,0]
             #self.PrintStateDict(stateDict,7)
-
         return stateDict       
 
     def PrintStateDict(self,stateDict,num):
