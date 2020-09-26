@@ -64,8 +64,7 @@ class BlackjackWarGame(BlackjackWarState,BlackjackWarAI):
             blackjackList = []
             
             allBust,playerList,blackjackList,bustsList,winnerStack,numOfPlayers = self.PlayRound(playerList,blackjackList,
-                                                                                                 bustsList,dealer,
-                                                                                                 numOfPlayers,winnerStack,
+                                                                                                 bustsList,dealer,winnerStack,
                                                                                                  cardValues,stateDict)
             playerList,blackjackList,bustsList,winnerStack = self.CheckRoundWinner(allBust,playerList,dealer,blackjackList,
                                                                                    bustsList,winnerStack,cardValues,
@@ -154,7 +153,7 @@ class BlackjackWarGame(BlackjackWarState,BlackjackWarAI):
                 playerList = self.CreateDealerList(playerList,dealer,numOfPlayers)
                 return playerList,dealer,numOfPlayers
 
-    def PlayRound(self,playerList,blackjackList,bustsList,dealer,numOfPlayers,winnerStack,cardValues,stateDict):
+    def PlayRound(self,playerList,blackjackList,bustsList,dealer,winnerStack,cardValues,stateDict):
         numOfPlayers = len(playerList)
         playerList = self.StartHand(playerList,dealer,blackjackList,bustsList,numOfPlayers,winnerStack,cardValues,stateDict)
         for playerIndex in range(1,numOfPlayers+1):
