@@ -205,7 +205,7 @@ class BlackjackWarGame(BlackjackWarState,BlackjackWarAI):
                 bustsList.append(player)
             elif ace == True:
                 if player.handTotal < 21:
-                    player.result == 'continue'
+                    player.result,blackjackList = self.CheckFor5Cards(player,blackjackList)
                 elif player.handTotal == 21:
                     print(player.name + ' has blackjack!','\n')
                     player.result = 'blackjack'
