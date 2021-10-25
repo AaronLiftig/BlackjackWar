@@ -1,381 +1,447 @@
 import pydealer
-import random
+from random import randint
 from blackjack_war_state import BlackjackWarState
 from blackjack_war_ai import BlackjackWarAI
+from player import Player
 
-class BlackjackWarGame(BlackjackWarState,BlackjackWarAI):
-    def __init__(self,numOfPlayers=None,humanPlayerNum=-1,numOfGames=1,ask=True):
-        cardValues = {'Ace':11,'King':10,'Queen':10,'Jack':10,'10':10,
-                      '9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2}
+class BlackjackWarGame(BlackjackWarState,BlackjackWarAI,Player):
+    def __init__(self,number_of_players,number_of_humans,number_of_games=1):
+        self.validate_number_of_games(number_of_games)
+        self.validate_number_of_players(number_of_players)
+        self.validate_number_of_humans(number_of_humans,number_of_players)
 
-        resultList = []
-        deck = pydealer.Deck()
+        print('This is like blackjack, but the winner')
+        print('of a round wins the cards for that round.')
+        print('The last player with cards remaining wins.')
+        print()
 
-        if ask not in (True,False):
-            Exception('The ask parameter is a boolean value (True or False).')
+        self.CARD_VALUES = {'Ace':11,'King':10,'Queen':10,'Jack':10,'10':10,
+                            '9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2}
+        results_list = []
+        self.number_of_humans = number_of_humans
         
-        if not (isinstance(numOfGames,int) and numOfGames > 0):
-            Exception('The numOfGames parameter must be a positive integer')
-
-        if ask == True:
-            while numOfPlayers not in (2,4):
-                numOfPlayers = int(input('Would you like to play with 2 or 4 players? Enter 2 or 4 and press enter.\n'))
-            while (not isinstance(humanPlayerNum,int))|(humanPlayerNum > numOfPlayers)|(humanPlayerNum < 0):
-                humanPlayerNum = int(input('How many human players are there? Enter an integer.\n'))
-
-            print('Human players are assigned first (e.g., If there are three human players, they will be players 1, 2, and 3.')
-            print('The computer players currently hit on 16 and stay on 17 unless behind.','\n'*2)
-
-            while True:
-                stateDict = self.CreateStateDict(numOfPlayers,deck)
-                winner = self.PlayGame(numOfPlayers,humanPlayerNum,cardValues,stateDict)
-                resultList.append(winner.name)
-
-                playAgain = None
-                while playAgain not in ('y','n'):
-                    playAgain = input('Would you like to play again? Enter y or n.\n').lower()
-                if playAgain == 'n':
-                    break
-        else:
-            for game in range(numOfGames):
-                stateDict = self.CreateStateDict(numOfPlayers,deck)
-                winner = self.PlayGame(numOfPlayers,humanPlayerNum,cardValues,stateDict)
-                resultList.append(winner.name)
+        results_list = self.main_game_loop(number_of_games,number_of_players,results_list)
 
         print('The final score was:')
-        for val in set(resultList):
-            print(val+':',resultList.count(val))
+        for val in set(results_list):
+            print(val+':',results_list.count(val))
 
-    def PlayGame(self,numOfPlayers,humanPlayerNum,cardValues,stateDict): # Plays full game
-        deck = pydealer.Deck()
-        deck.shuffle()
-        playerList = self.DealCards(deck,numOfPlayers)
-        
-        winnerStack = pydealer.Stack()
+    @staticmethod
+    def validate_number_of_games(number_of_games):
+        if not (isinstance(number_of_games,int) and number_of_games > 0):
+            raise Exception('The number_of_games parameter must be a positive integer.')
 
-        self.CheckHumanNum(numOfPlayers,humanPlayerNum) # Added AI
-        playerList = self.assignAI(playerList,numOfPlayers,humanPlayerNum)
+    @staticmethod
+    def validate_number_of_players(number_of_players):
+        if number_of_players not in (2,4):
+            raise Exception('The number_of_players parameter must be 2 or 4.')
 
-        dealer = self.PickRandomDealer(playerList)
-        stateDict = self.UpdateState(stateDict,dealer=dealer)
-        playerList = self.CreateDealerList(playerList,dealer,numOfPlayers)
-        while True: # Plays one round
-            bustsList = []
-            blackjackList = []
+    @staticmethod
+    def validate_number_of_humans(number_of_humans,number_of_players):
+        if (not isinstance(number_of_humans,int) 
+            or number_of_humans > number_of_players 
+            or number_of_humans < 0):
+            raise Exception('The number_of_humans parameter must be an integer '                        'between 0 and number_of_players.')
+
+    def main_game_loop(self,number_of_games,number_of_players,results_list):
+        for game in range(1,number_of_games+1):
+            if game % 50 == 0:
+                print(game,'games played')
+            self.number_of_players = number_of_players
+            self.deck = pydealer.Deck()
+            self.state_dict = self.create_state_dict(self.number_of_players,self.deck)
+            winner = self.play_game()
+            if not isinstance(winner,str):
+                results_list.append(winner.name)
+            else:
+                self.print_if_human_playing(['All players were eliminated. No winner this round.'])
+        return results_list
+
+    def play_game(self):
+        self.pregame_setup()
+        while True:
+            self.busts_list = []
+            self.blackjack_list = []
             
-            allBust,playerList,blackjackList,bustsList,winnerStack,numOfPlayers = self.PlayRound(playerList,blackjackList,
-                                                                                                 bustsList,dealer,winnerStack,
-                                                                                                 cardValues,stateDict)
-            playerList,blackjackList,bustsList,winnerStack = self.CheckRoundWinner(allBust,playerList,dealer,blackjackList,
-                                                                                   bustsList,winnerStack,cardValues,
-                                                                                   stateDict)
+            self.all_bust = self.play_round()
             
-            self.PrintHandSizes(playerList)
-            for player in playerList:
-                stateDict = self.UpdateState(stateDict,player=player,updateCardCounts=True)
-                player,winnerStack,stateDict = self.CheckIfEliminated(player,winnerStack,stateDict)
-            playerList,dealer,numOfPlayers = self.GetNextDealer(playerList,numOfPlayers)
-            stateDict = self.UpdateState(stateDict,dealer=dealer)
-            playersRemaining = self.DeleteEliminated(playerList)
-            if not isinstance(playersRemaining,list):
-                return playersRemaining
-            if any(player.human for player in playerList):
+            for player in self.player_list:
+                self.is_player_eliminated(player)
+            winner = self.check_for_game_winner()
+            if winner is not None:
+                return winner
+
+            self.check_round_winner()
+            
+            if self.is_there_a_human_player():
+                self.print_hand_sizes()
+
+            for player in self.player_list:
+                self.state_dict = self.update_card_counts(self.state_dict,player)
+                self.delete_eliminated(player)
+
+            self.get_next_dealer()
+            self.state_dict = self.update_dealer(self.state_dict,self.dealer)
+            
+            if self.is_there_a_human_player():
                 input('Press enter to continue to next round.')
-                print('######################################','\n'*2)
-            print(dealer.name + ' is the next dealer.','\n')
+            self.print_if_human_playing(['######################################',
+                                        self.dealer.name+' is the next dealer.'])
 
-    def DealCards(self,deck,numOfPlayers): # Just splits deck to deal, as cards are shuffled. Visual can deal one at a time.
-        if numOfPlayers not in (2,4):
-            raise Exception('numOfPlayers must be 2 or 4')
-        if numOfPlayers == 2:
-            Player1 = pydealer.Stack()
-            Player1.add(deck.deal(26))
-            Player2 = pydealer.Stack()
-            Player2.add(deck.deal(26))
-            playerList = [Player1,Player2]
-            playerNamesList = ['Player 1','Player 2']
-            playerNum = 0
-            for player,nameString in zip(playerList,playerNamesList):
-                player.name = nameString
-                player.eliminated = False
-                player.index = playerNum
-                playerNum += 1
-        elif numOfPlayers == 4:
-            Player1 = pydealer.Stack()
-            Player1.add(deck.deal(13))
-            Player2 = pydealer.Stack()
-            Player2.add(deck.deal(13))
-            Player3 = pydealer.Stack()
-            Player3.add(deck.deal(13))
-            Player4 = pydealer.Stack()
-            Player4.add(deck.deal(13))
-            playerList = [Player1,Player2,Player3,Player4]
-            playerNames = ['Player 1','Player 2','Player 3','Player 4']
-            playerNum = 0
-            for player,nameString in zip(playerList,playerNames):
-                player.name = nameString
-                player.eliminated = False
-                player.index = playerNum
-                playerNum += 1
-        return playerList
+    def pregame_setup(self):
+        self.deck.shuffle()
+        self.player_list = self.deal_cards()
+        self.winner_stack = pydealer.Stack()
+        self.player_list = self.assign_ai(self.player_list,self.number_of_players,
+                                            self.number_of_humans)
+        self.dealer = self.pick_random_dealer()
+        self.state_dict = self.update_dealer(self.state_dict,self.dealer)
+        self.create_dealer_list()
 
-    def PrintHandSizes(self,playerList):
+    def deal_cards(self):
+        if self.number_of_players == 2:
+            player_list,player_names_list = self.two_player_setup()
+        elif self.number_of_players == 4:
+            player_list,player_names_list = self.four_player_setup()
+        player_list = self.combine_setup_parts(player_list,player_names_list)
+        return player_list
+
+    def two_player_setup(self):
+        player_1 = pydealer.Stack()
+        player_1.add(self.deck.deal(26))
+        player_2 = pydealer.Stack()
+        player_2.add(self.deck.deal(26))
+        player_list = [player_1,player_2]
+        player_names_list = ['Player 1','Player 2']
+        return player_list,player_names_list
+
+    def four_player_setup(self):
+        player_1 = pydealer.Stack()
+        player_1.add(self.deck.deal(13))
+        player_2 = pydealer.Stack()
+        player_2.add(self.deck.deal(13))
+        player_3 = pydealer.Stack()
+        player_3.add(self.deck.deal(13))
+        player_4 = pydealer.Stack()
+        player_4.add(self.deck.deal(13))
+        player_list = [player_1,player_2,player_3,player_4]
+        player_names_list = ['Player 1','Player 2','Player 3','Player 4']
+        return player_list,player_names_list
+
+    def combine_setup_parts(self,player_list,player_names_list):
+        for i, (player,name_string) in enumerate(zip(player_list,player_names_list)):
+            player.name = name_string
+            player.eliminated = False
+            player.index = i
+        return player_list
+
+    def print_hand_sizes(self):
         print('The current hand sizes are now:')
-        for player in playerList:      
+        for player in self.player_list:      
             print(player.name + ':',player.size)
-        print('\n'*2)
+        print()
 
-    def PickRandomDealer(self,playerList):
-        dealerIndex = random.randint(0,len(playerList)-1)
-        dealer = playerList[dealerIndex]
-        print(dealer.name + ' is the dealer to start.','\n')
+    def is_there_a_human_player(self):
+        return any(player.is_human for player in self.player_list)
+
+    def print_if_human_playing(self,statement_list):
+        if self.is_there_a_human_player():
+            for statement in statement_list:
+                print(statement)
+            print()
+
+    def pick_random_dealer(self):
+        dealer_index = randint(0,self.number_of_players-1)
+        dealer = self.player_list[dealer_index]
+        self.print_if_human_playing([dealer.name+' is the dealer to start.'])
         return dealer
     
-    def CreateDealerList(self,playerList,dealer,numOfPlayers): # So deleting players doesn't mess up finding next dealer
-        tempList = []
+    def create_dealer_list(self): # Makes finding next dealer easier
+        temp_list = []
         counter=0
-        for player in playerList:
-            if player.name != dealer.name:
+        for player in self.player_list:
+            if player.name != self.dealer.name:
                 counter+=1
             else:
-                for playerIndex in range(counter,counter+len(playerList)):
-                    playerIndex %= numOfPlayers
-                    tempList.append(playerList[playerIndex])
-        playerList = tempList
-        return playerList
+                for player_index in range(counter,counter+self.number_of_players):
+                    player_index %= self.number_of_players
+                    temp_list.append(self.player_list[player_index])
+                break
+        self.player_list = temp_list
 
-    def GetNextDealer(self,playerList,numOfPlayers):
-        for playerIndex in range(1,numOfPlayers+1):
-            playerIndex %= numOfPlayers
-            player = playerList[playerIndex]
-            if player.eliminated==False:
-                dealer = player
-                playerList = self.CreateDealerList(playerList,dealer,numOfPlayers)
-                return playerList,dealer,numOfPlayers
+    def get_next_dealer(self):
+        for player_index in range(1,self.number_of_players+1):
+            player_index %= self.number_of_players
+            player = self.player_list[player_index]
+            if not player.eliminated:
+                self.dealer = player
+                self.create_dealer_list()
+                return
 
-    def PlayRound(self,playerList,blackjackList,bustsList,dealer,winnerStack,cardValues,stateDict):
-        numOfPlayers = len(playerList)
-        playerList = self.StartHand(playerList,dealer,blackjackList,bustsList,numOfPlayers,winnerStack,cardValues,stateDict)
-        for playerIndex in range(1,numOfPlayers+1):
-            if len(bustsList)==numOfPlayers-1:
-                return True,playerList,blackjackList,bustsList,winnerStack,numOfPlayers
-            playerIndex %= numOfPlayers
-            player = playerList[playerIndex]
-            if player.eliminated == True:
+    def play_round(self):
+        self.start_hand()
+        for player_index in range(1,self.number_of_players+1):
+            if len(self.busts_list) == self.number_of_players-1:
+                return True
+            player_index %= self.number_of_players
+            player = self.player_list[player_index]
+            if player.eliminated:
                 continue
-            stateDict = self.UpdateState(stateDict,player=player,updateTurn=True)
+            self.state_dict = self.update_turn(self.state_dict,player)
             while player.result == 'continue':
-                player,playerList,blackjackList,bustsList = self.GetChoice(player,playerList,dealer,blackjackList,bustsList,
-                                                                           winnerStack,cardValues,stateDict)
-                if player.eliminated == True:
+                player = self.get_choice(player)
+                if player.eliminated:
                     break
-        return False,playerList,blackjackList,bustsList,winnerStack,numOfPlayers
+        return False
 
-    def StartHand(self,playerList,dealer,blackjackList,bustsList,numOfPlayers,winnerStack,cardValues,stateDict):
-        for playerIndex in range(1,numOfPlayers+1):
-            playerIndex %= numOfPlayers
-            player = playerList[playerIndex]
-            player.inPlay = pydealer.Stack()
-            player,winnerStack,stateDict = self.CheckIfEliminated(player,winnerStack,stateDict)
-            if player.eliminated == True:
+    def start_hand(self):
+        for player_index in range(1,self.number_of_players+1):
+            player_index %= self.number_of_players
+            player = self.player_list[player_index]
+            player.in_play = pydealer.Stack()
+
+            player,eliminated = self.is_player_eliminated(player)
+            if eliminated:
                 continue
-            player.inPlay.add(player.deal(2))
-            stateDict = self.UpdateState(stateDict,player=player,updateCardState=True)
-            
-            print('##########')
-            print(player.name + ' is showing...')
-            print(player.inPlay,'\n')
-            player,blackjackList,bustsList = self.CheckTotal(player,blackjackList,bustsList,cardValues)
-            stateDict = self.UpdateState(stateDict,player=player,updateHandTotals=True,updateCardState=True)
-        return playerList 
+                
+            player.in_play.add(player.deal(2))
+            self.print_if_human_playing(['##########',
+                                        player.name+' is showing...',
+                                        player.in_play])
 
-    def CheckTotal(self,player,blackjackList,bustsList,cardValues):
-        player = self.GetSum(player,cardValues)
-        if player.handTotal < 21:
-            player.result,blackjackList = self.CheckFor5Cards(player,blackjackList)
-        elif player.handTotal == 21:
-            print(player.name + ' has blackjack!','\n')
-            player.result = 'blackjack'
-            blackjackList.append(player)
-        elif player.handTotal > 21:
-            ace,player = self.CheckForAce(player)
-            if ace == False:
-                print(player.name + ' has ' + str(player.handTotal) + ' and has busted.','\n')
-                player.result = 'bust'
-                bustsList.append(player)
-            elif ace == True:
-                if player.handTotal < 21:
-                    player.result,blackjackList = self.CheckFor5Cards(player,blackjackList)
-                elif player.handTotal == 21:
-                    print(player.name + ' has blackjack!','\n')
-                    player.result = 'blackjack'
-                    blackjackList.append(player)
-                elif player.handTotal > 21:
-                    print(player.name + ' has ' + str(player.handTotal) + ' and has busted.','\n')
-                    player.result = 'bust'
-                    bustsList.append(player)      
-        return player,blackjackList,bustsList
+            player = self.check_total(player)
+            self.state_dict = self.update_hand_totals(self.state_dict,player)
+            self.state_dict = self.update_card_state(self.state_dict,player)
 
-    def GetSum(self,player,cardValues,handTotal=0): # TODO implement sum that adds last hit instead of counting whole hand
-        for card in player.inPlay.cards:
-            handTotal += cardValues[card.value]
-        player.handTotal = handTotal
-        print(player.name + ' has a total of',player.handTotal,'\n')
+    def check_total(self,player):
+        player = self.get_sum(player)
+        if player.hand_total < 21:
+            player.result = self.check_for_5_cards(player)
+        elif player.hand_total == 21:
+            player = self.has_blackjack(player)
+        else:
+            player = self.over_21_sequence(player)
         return player
 
-    def CheckFor5Cards(self,player,blackjackList):
-        if player.inPlay.size < 5:
-            return 'continue',blackjackList
-        elif player.inPlay.size == 5:
-            print(player.name + ' has 5 cards. Blackjack!','\n')
-            blackjackList.append(player)
-            return 'blackjack',blackjackList
-        
-    def GetChoice(self,player,playerList,dealer,blackjackList,bustsList,winnerStack,cardValues,stateDict):
-        print('#####')
-        print('It is ' + player.name +'\'s turn.')
-        print(player.name + ' is showing a total of '+ str(player.handTotal) + '.')
-        # TODO Create a dealer Stay-On-17 rule for all players 
-        if player.human == False:
-            state = self.OutputState(stateDict)
-            player = self.GameAI(player,playerList,state)
-            if player.result == 'hit':
-                player,blackjackList,bustsList,winnerStack = self.GetHit(player,blackjackList,bustsList,winnerStack,
-                                                                         cardValues,stateDict)
-        elif player.human == True:
-            choice = None
-            while choice not in ('h','s'):
-                choice = input('Would ' + player.name + ' like to hit? Enter h for hit or s for stay.\n')
-            if choice.lower() == 'h':
-                player,blackjackList,bustsList,winnerStack = self.GetHit(player,blackjackList,bustsList,winnerStack,
-                                                                         cardValues,stateDict)        
-            elif choice.lower() == 's':
-                player.result = 'stay'
-        return player,playerList,blackjackList,bustsList
-
-    def GetHit(self,player,blackjackList,bustsList,winnerStack,cardValues,stateDict):
-        player,winnerStack,stateDict = self.CheckIfEliminated(player,winnerStack,stateDict)
-        if player.eliminated==True:
-            print(player.name + ' has been eliminated.','\n'*2)
-            return winnerStack
-        hit = player.deal(1)
-        print(player.name + ' gets a(n)',hit,'\n')
-        player.inPlay.add(hit)
-        player,blackjackList,bustsList = self.CheckTotal(player,blackjackList,bustsList,cardValues)
-        stateDict = self.UpdateState(stateDict,player=player,updateHandTotals=True,updateCardState=True)
-        return player,blackjackList,bustsList,winnerStack
-
-    def CheckForAce(self,player): # TODO Only count additional aces
-        aceCount=0
-        for card in player.inPlay.cards:
-            if card.value=='Ace':
-                player.handTotal-=10
-                aceCount+=1
-                if player.handTotal<=21:
-                    print(player.name + ' converted',aceCount,'ace(s) to 1 instead of 11.')
-                    print('Now ' + player.name + ' has a total of',player.handTotal,'\n')
-                    return True,player
-        return False,player
-
-    def CheckRoundWinner(self,allBust,playerList,dealer,blackjackList,bustsList,winnerStack,cardValues,stateDict):
-        if allBust == False:
-            if len(blackjackList)==0:
-                notBustList = [player for player in playerList if player not in bustsList]
-                if len(notBustList)==1:
-                    print('##########')
-                    print(notBustList[0].name + ' has won this round.','\n')
-                    playerList,winnerStack = self.TakeLoserCards(notBustList[0],playerList,winnerStack,stateDict)
-                else:
-                    tempList = []
-                    for player in notBustList:
-                        if not tempList:
-                            tempList.append(player)
-                        elif tempList[0].handTotal>player.handTotal:
-                            pass
-                        elif tempList[0].handTotal<player.handTotal:
-                            tempList = []
-                            tempList.append(player)
-                        elif tempList[0].handTotal==player.handTotal:
-                            tempList.append(player)
-                    if len(tempList)==1:
-                        print('##########')
-                        print(tempList[0].name + ' has won this round.','\n')
-                        playerList,winnerStack = self.TakeLoserCards(tempList[0],playerList,winnerStack,stateDict)
-                    else:
-                        playerList,winnerStack = self.WarTiebreak(playerList,tempList,winnerStack,cardValues,stateDict)
-            elif len(blackjackList)==1:
-                print('##########')
-                print(blackjackList[0].name + ' has won this round.','\n')
-                playerList,winnerStack = self.TakeLoserCards(blackjackList[0],playerList,winnerStack,stateDict)
-            else:
-                playerList,winnerStack = self.WarTiebreak(playerList,blackjackList,winnerStack,cardValues,stateDict)
-        elif allBust == True:
-            print('##########')
-            print('The dealer has won by default.','\n')
-            playerList,winnerStack = self.TakeLoserCards(dealer,playerList,winnerStack,stateDict)
-        return playerList,blackjackList,bustsList,winnerStack
-
-    def TakeLoserCards(self,winner,playerList,winnerStack,stateDict):
-        stateDict = self.UpdateState(stateDict,winner=winner)
-        for player in playerList:
-            winnerStack.add(player.inPlay.empty(return_cards=True))
-        print(winner.name + ' has won',winnerStack.size,'cards.','\n'*2)
-        winner.add(winnerStack.empty(return_cards=True),end='bottom')
-        winner.shuffle()
-        return playerList,winnerStack
-
-    def WarTiebreak(self,playerList,tiebreakList,winnerStack,cardValues,stateDict):
-        print('##########')
-        print('There is a tiebreak, as more than one player has',tiebreakList[0].handTotal)
-        newTiebreakList = []
-        for player in tiebreakList:
-            player,winnerStack,stateDict = self.CheckIfEliminated(player,winnerStack,stateDict)
-            if player.eliminated==True:
-                continue
-            player.inPlay.add(player.deal(1),end='bottom')
-            player.handTotal = cardValues[player.inPlay.cards[0].value]
-            print(player.name + ' has drawn a',player.inPlay.cards[0])
-            if not newTiebreakList:
-                newTiebreakList.append(player)
-            elif newTiebreakList[0].handTotal>player.handTotal:
-                pass
-            elif newTiebreakList[0].handTotal<player.handTotal:
-                newTiebreakList = []
-                newTiebreakList.append(player)
-            elif newTiebreakList[0].handTotal==player.handTotal:
-                newTiebreakList.append(player)
-        if len(newTiebreakList)==1:
-            print(newTiebreakList[0].name + ' has won the tiebreak.')
-            playerList,winnerStack = self.TakeLoserCards(newTiebreakList[0],playerList,winnerStack,stateDict)
+    def over_21_sequence(self,player):
+        has_ace, player = self.check_for_ace(player)
+        if not has_ace:
+            self.player_busts(player)
         else:
-            playerList,winnerStack = self.WarTiebreak(playerList,newTiebreakList,winnerStack,cardValues,stateDict)
-        return playerList,winnerStack
+            player = self.over_21_with_ace(player)
+        return player
 
-    def CheckIfEliminated(self,player,winnerStack,stateDict):	
+    def has_blackjack(self,player):
+        self.print_if_human_playing([player.name+' has blackjack!'])
+        player.result = 'blackjack'
+        self.blackjack_list.append(player)
+        return player
+
+    def over_21_with_ace(self,player):
+        if player.hand_total < 21:
+            player.result = self.check_for_5_cards(player)
+        elif player.hand_total == 21:
+            self.print_if_human_playing([player.name+' has blackjack!'])
+            player.result = 'blackjack'
+            self.blackjack_list.append(player)
+        elif player.hand_total > 21:
+            self.player_bust(player)
+        return player
+
+    def player_busts(self,player):
+        self.print_if_human_playing([player.name+' busted with '+str(player.hand_total)+'.'])
+        player.result = 'bust'
+        player.hand_total = 0
+        self.busts_list.append(player)
+
+    def get_sum(self,player,hand_total=0):
+        for card in player.in_play.cards:
+            hand_total += self.CARD_VALUES[card.value]
+        player.hand_total = hand_total
+        self.print_if_human_playing([player.name+' has '+str(player.hand_total)+'.'])
+        return player
+
+    def check_for_5_cards(self,player):
+        if player.in_play.size < 5:
+            return 'continue'
+        elif player.in_play.size == 5:
+            self.print_if_human_playing([player.name+' has 5 cards. Blackjack!'])
+            self.blackjack_list.append(player)
+            return 'blackjack'
+        
+    def get_choice(self,player):
+        self.print_if_human_playing(['#####',
+                                    'It is '+player.name +'\'s turn.',
+                                    player.name+' is showing '+str(player.hand_total)+'.'])
+        if not player.is_human:
+            player = self.get_choice_if_not_human(player)
+        else:
+            player = self.get_choice_if_human(player)
+        return player
+
+    def get_choice_if_not_human(self,player):
+        state = self.output_state(self.state_dict)
+        player = self.game_ai(player,self.player_list,state)
+        if player.result == 'hit':
+            player = self.get_hit(player)
+        return player
+
+    def get_choice_if_human(self,player):
+        print('The other hand sizes are',*[p.hand_total for p in self.player_list if p != player])
+        print()
+        choice = None
+        while choice not in ('h','s'):
+            choice = input('Would '+player.name+' like to hit? Enter h for hit or s for stay.\n')
+        if choice == 'h':
+            player = self.get_hit(player)        
+        elif choice == 's':
+            player.result = 'stay'
+        return player
+
+    def get_hit(self,player):
+        player,eliminated = self.is_player_eliminated(player)
+        if eliminated:
+            return player
+        hit_card = player.deal(1)
+        self.print_if_human_playing([player.name+' gets a(n) '+hit_card[0].name])
+        player.in_play.add(hit_card)
+        player = self.check_total(player)
+        self.state_dict = self.update_hand_totals(self.state_dict,player)
+        self.state_dict = self.update_card_state(self.state_dict,player)
+        return player
+
+    def check_for_ace(self,player):
+        ace_count=0
+        for card in player.in_play.cards:
+            if card.value=='Ace':
+                ace_count,not_busted = self.deduct_ace(player,ace_count)
+                if not_busted:
+                    return True, player
+        return False, player
+
+    def deduct_ace(self,player,ace_count):
+        player.hand_total-=10
+        ace_count+=1
+        if player.hand_total<=21:
+            self.print_if_human_playing([player.name+' converted '+str(ace_count)+' ace(s) to 1.',
+                                        'Now '+player.name+' has '+str(player.hand_total)+'.'])
+            return ace_count,True
+        return ace_count,False
+            
+    def check_round_winner(self):
+        if not self.all_bust:
+            self.get_winner_from_multiple_players()
+        else:
+            self.player_wins(self.dealer)
+
+    def get_winner_from_multiple_players(self):
+        if not self.blackjack_list:
+            self.get_no_blackjacks_winner()
+        elif len(self.blackjack_list) == 1:
+            self.player_wins(self.blackjack_list[0])
+        else:
+            self.war_tiebreak(self.blackjack_list)
+
+    def get_no_blackjacks_winner(self):
+        not_bust_list = [player for player in self.player_list if player not in self.busts_list]
+        if len(not_bust_list) == 1:
+            self.player_wins(not_bust_list[0])
+        else:
+            self.multiple_players_not_busted(not_bust_list)
+
+    def player_wins(self,player):
+        self.print_if_human_playing(['##########',
+                                    player.name+' has won this round.'])
+        self.give_winner_stack(player)
+
+    def multiple_players_not_busted(self,not_bust_list):
+        tiebreak_list = []
+        for player in not_bust_list:
+            tiebreak_list = self.populate_tiebreak_list(player,tiebreak_list)
+        if len(tiebreak_list) == 0:
+            pass
+        if len(tiebreak_list) == 1:
+            self.player_wins(tiebreak_list[0])
+        else:
+            self.war_tiebreak(tiebreak_list)
+
+    def populate_tiebreak_list(self,player,tiebreak_list):
+        if not tiebreak_list:
+            tiebreak_list.append(player)
+        elif tiebreak_list[0].hand_total > player.hand_total:
+            pass
+        elif tiebreak_list[0].hand_total < player.hand_total:
+            tiebreak_list = []
+            tiebreak_list.append(player)
+        elif tiebreak_list[0].hand_total == player.hand_total:
+            tiebreak_list.append(player)
+        return tiebreak_list
+
+    def add_all_in_play_cards_to_winner_stack(self):
+        for player in self.player_list:    
+            self.winner_stack.add(player.in_play.empty(return_cards=True))
+    
+    def give_winner_stack(self,winner=None,all_eliminated=False):
+        self.add_all_in_play_cards_to_winner_stack()
+        if not all_eliminated:
+            self.state_dict = self.update_winner(self.state_dict,winner)
+            self.print_if_human_playing([winner.name+' has won '+str(self.winner_stack.size)+' cards.'])
+            winner.add(self.winner_stack.empty(return_cards=True))
+            winner.shuffle()
+        else:
+            for i, card in enumerate(self.winner_stack.cards):
+                self.player_list[i % self.number_of_players].add(card)
+                self.player_list[i % self.number_of_players].shuffle()
+
+    def war_tiebreak(self,tiebreak_list,successive_tiebreaks=0):
+        self.print_if_human_playing(['##########',
+                                    'There is a tiebreak. '+str(len(tiebreak_list)),
+                                    'players have '+str(tiebreak_list[0].hand_total)+'.'])
+        new_tiebreak_list = []
+        for player in tiebreak_list:
+            player,eliminated = self.is_player_eliminated(player)
+            if eliminated:
+                continue
+            player, new_tiebreak_list = self.new_tiebreak_list_process(player,new_tiebreak_list)
+        if len(new_tiebreak_list) == 0:
+            self.print_if_human_playing(['All players in tiebreak have been eliminated.'])
+            self.give_winner_stack(all_eliminated=True)
+        elif len(new_tiebreak_list) == 1:
+            self.player_wins(new_tiebreak_list[0])
+        else:
+            self.war_tiebreak(new_tiebreak_list)
+
+    def new_tiebreak_list_process(self,player,new_tiebreak_list):
+        player.in_play.add(player.deal(1),end='bottom')
+        player.hand_total = self.CARD_VALUES[player.in_play.cards[0].value]
+        self.print_if_human_playing([player.name+' has drawn a '+player.in_play.cards[0].name])
+        new_tiebreak_list = self.populate_tiebreak_list(player,new_tiebreak_list)
+        return player, new_tiebreak_list
+    
+    def is_player_eliminated(self,player):	
         if player.size == 0:	
             player.eliminated = True
-            stateDict = self.UpdateState(stateDict,player=player,updateEliminated=True)	
-            print(player.name + ' has been eliminated.','\n')
-            winnerStack.add(player.empty(return_cards=True))
-            winnerStack.add(player.inPlay.empty(return_cards=True))
-        return player,winnerStack,stateDict	
+            self.state_dict = self.update_eliminated(self.state_dict,player)	
+            self.print_if_human_playing([player.name+' has been eliminated.'])
+            return player, True
+        return player, False
 
-    def DeleteEliminated(self,playerList):	
-        for player in playerList:
-            if player.eliminated == True:
-                playerList.remove(player)	
-                winner = self.CheckForGameWinner(playerList)
-                if winner is not None:
-                    return winner
-        return playerList
+    def delete_eliminated(self,player):
+        if player.eliminated:	
+            self.player_list.remove(player)
+            self.number_of_players = len(self.player_list)	
 
-    def CheckForGameWinner(self,playerList):
-        if len(playerList) == 1:
-            print(playerList[0].name + ' is the winner!','\n')
-            return playerList[0]
-        return None
+    def check_for_game_winner(self):
+        not_eliminated_list= [player for player in self.player_list if not player.eliminated]
+        if len(not_eliminated_list) == 1:
+            self.print_if_human_playing([self.not_eliminated_list[0].name+' is the winner!'])
+            return not_eliminated_list[0]
+        elif len(not_eliminated_list) == 0:
+            return 'flag'
+        else:
+            return None
 
-    
-# BlackjackWarGame(numOfPlayers=None,humanPlayerNum=-1,numOfGames=1,ask=True)
-# If ask == True: players will be prompted for numOfPlayers and humanPlayerNum and will be asked to play again.
-BlackjackWarGame(numOfPlayers=4,humanPlayerNum=0,numOfGames=1,ask=False)
+
+
+if __name__ == '__main__':
+    BlackjackWarGame(number_of_players=4,number_of_humans=1,number_of_games=1)
