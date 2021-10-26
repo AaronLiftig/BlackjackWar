@@ -41,7 +41,8 @@ class BlackjackWarGame(BlackjackWarState,BlackjackWarAI,Player):
         if (not isinstance(number_of_humans,int) 
             or number_of_humans > number_of_players 
             or number_of_humans < 0):
-            raise Exception('The number_of_humans parameter must be an integer '                        'between 0 and number_of_players.')
+            raise Exception('The number_of_humans parameter must be an integer '                        
+                            'between 0 and number_of_players.')
 
     def main_game_loop(self,number_of_games,number_of_players,results_list):
         for game in range(1,number_of_games+1):
