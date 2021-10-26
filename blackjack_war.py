@@ -65,13 +65,13 @@ class BlackjackWarGame(BlackjackWarState,BlackjackWarAI,Player):
             
             self.all_bust = self.play_round()
             
+            self.check_round_winner()
+
             for player in self.player_list:
                 self.is_player_eliminated(player)
             winner = self.check_for_game_winner()
             if winner is not None:
                 return winner
-
-            self.check_round_winner()
             
             if self.is_there_a_human_player():
                 self.print_hand_sizes()
@@ -359,8 +359,8 @@ class BlackjackWarGame(BlackjackWarState,BlackjackWarAI,Player):
         for player in not_bust_list:
             tiebreak_list = self.populate_tiebreak_list(player,tiebreak_list)
         if len(tiebreak_list) == 0:
-            pass
-        if len(tiebreak_list) == 1:
+            return # Player has won game with multiple eliminations in same round
+        elif len(tiebreak_list) == 1:
             self.player_wins(tiebreak_list[0])
         else:
             self.war_tiebreak(tiebreak_list)
@@ -434,7 +434,7 @@ class BlackjackWarGame(BlackjackWarState,BlackjackWarAI,Player):
     def check_for_game_winner(self):
         not_eliminated_list= [player for player in self.player_list if not player.eliminated]
         if len(not_eliminated_list) == 1:
-            self.print_if_human_playing([self.not_eliminated_list[0].name+' is the winner!'])
+            self.print_if_human_playing([not_eliminated_list[0].name+' is the winner!'])
             return not_eliminated_list[0]
         elif len(not_eliminated_list) == 0:
             return 'flag'
