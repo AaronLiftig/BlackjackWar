@@ -1,4 +1,3 @@
-from contextlib import nullcontext
 from pydealer import Stack
 
 class Player(Stack):
