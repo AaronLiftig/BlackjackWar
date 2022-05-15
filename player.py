@@ -1,3 +1,4 @@
-class Player:
-    def __init__(self):
-        pass
+from pydealer import Stack
+
+class Player(Stack):
+    pass

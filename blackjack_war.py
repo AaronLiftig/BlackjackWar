@@ -108,24 +108,16 @@ class BlackjackWarGame(BlackjackWarState,BlackjackWarAI,Player):
         return player_list
 
     def two_player_setup(self):
-        player_1 = pydealer.Stack()
-        player_1.add(self.deck.deal(26))
-        player_2 = pydealer.Stack()
-        player_2.add(self.deck.deal(26))
-        player_list = [player_1,player_2]
+        player_list = [Player(), Player()]
+        for player in player_list:
+            player.add(self.deck.deal(26))
         player_names_list = ['Player 1','Player 2']
         return player_list,player_names_list
 
     def four_player_setup(self):
-        player_1 = pydealer.Stack()
-        player_1.add(self.deck.deal(13))
-        player_2 = pydealer.Stack()
-        player_2.add(self.deck.deal(13))
-        player_3 = pydealer.Stack()
-        player_3.add(self.deck.deal(13))
-        player_4 = pydealer.Stack()
-        player_4.add(self.deck.deal(13))
-        player_list = [player_1,player_2,player_3,player_4]
+        player_list = [Player(), Player(), Player(), Player()]
+        for player in player_list:
+            player.add(self.deck.deal(13))
         player_names_list = ['Player 1','Player 2','Player 3','Player 4']
         return player_list,player_names_list
 
